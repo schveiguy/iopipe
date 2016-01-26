@@ -1,0 +1,17 @@
+name "iopipe"
+description "A modular io library in D."
+copyright "Copyright © 2011-2016, Steven Schveighoffer"
+authors "Steven Schveighoffer" "Dmitry Olshansky"
+license "BSL-1.0"
+subPackage {
+   name "byline"
+   targetType "executable"
+   sourcePaths "examples/byline"
+   dependency "iopipe" version="*"
+}
+subPackage {
+   name "convert"
+   targetType "executable"
+   sourcePaths "examples/convert"
+   dependency "iopipe" version="*"
+}
