@@ -11,87 +11,10 @@ private import core.sys.posix.unistd;
 private import std.string : toStringz;
 
 /**
- * Interface defining common stream functions
- */
-interface StreamBase
-{
-    /**
-     * Seek the stream.  seekCurrent seeks from the current stream position,
-     * seekAboslute seeks to the given position offset from the beginning of
-     * the stream, and seekEnd seeks to the posision offset bytes from the end
-     * of the stream (backwards).
-     *
-     * Note, this throws an exception if seeking fails or isn't supported.
-     *
-     * params:
-     * offset = bytes to seek.
-     *
-     * returns: The position of the stream from the beginning of the stream
-     * after seeking, or ulong.max if this cannot be determined.
-     */
-    ulong seekCurrent(long offset);
-    /// ditto
-    ulong seekAbsolute(ulong offset);
-    /// ditto
-    ulong seekEnd(ulong offset);
-
-    /**
-     * Determine the current file position.  Calls seekCurrent(0).
-     *
-     * Returns ulong.max if the operation fails or is not supported.
-     */
-    final ulong tell() {return seekCurrent(0); }
-
-    /**
-     * Close the stream.  This releases any resources from the object.
-     */
-    void close();
-}
-
-/**
- * An input stream.  This is the simplest interface to a stream.  An
- * InputStream provides no buffering or high-level constructs, it's simply an
- * abstraction of a low-level stream mechanism.
- */
-interface InputStream : StreamBase
-{
-    /**
-     * Read data from the stream.
-     *
-     * Throws an exception if reading does not succeed.
-     *
-     * params: data = Location to store the data from the stream.  Only the
-     * data read from the stream is filled in.  It is valid for read to return
-     * less than the number of bytes requested *and* not be at EOF.
-     *
-     * returns: 0 on EOF, number of bytes read otherwise.
-     */
-    size_t read(ubyte[] data);
-}
-
-/**
- * simple output interface.
- */
-interface OutputStream : StreamBase
-{
-    /**
-     * Write a chunk of data to the output stream
-     *
-     * params:
-     * data = The buffer to write to the stream.
-     * returns: the number of bytes written on success.  If 0 is returned, then
-     * the stream cannot be written to.
-     */
-    size_t write(const(ubyte)[] data);
-    /// ditto
-    alias put = write;
-}
-
-/**
  * The basic device-based Input and Output stream.  This uses the OS's native
  * file handle to communicate using physical devices.
  */
-class IODevice : InputStream, OutputStream
+class IODevice
 {
     enum OpenMode
     {
@@ -225,6 +148,9 @@ class IODevice : InputStream, OutputStream
         {
             seekEnd(0);
         }
+
+        // we opened the file, make sure we close it.
+        _closeOnDestroy = true;
     }
 
     private ulong _seek(long delta, int whence)
@@ -370,5 +296,33 @@ class IODevice : InputStream, OutputStream
     @property OpenMode openMode()
     {
         return _openMode;
+    }
+}
+
+/**
+ * A NullDevice is a source that reads uninitialized data.
+ */
+struct NullDevice
+{
+    /**
+     * read the data. Always succeeds.
+     */
+    size_t read(T)(T buf)
+    {
+        // null data doesn't matter
+        return buf.length;
+    }
+}
+
+/**
+ * A source stream that always reads zeros, no matter what the data type is.
+ */
+struct ZeroSource
+{
+    size_t read(T)(T buf)
+    {
+        // zero data
+        buf[] = 0;
+        return buf.length;
     }
 }

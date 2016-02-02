@@ -5,13 +5,8 @@ License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 Authors:   Steven Schveighoffer
  */
 module iopipe.valve;
+import iopipe.traits;
 import std.traits : hasMember;
-
-mixin template implementValve(alias chain)
-{
-    static if(hasMember!(typeof(chain), "valve"))
-        ref valve() { return chain.valve; }
-}
 
 // provides a mechanism to hold data from downstream processors until ready
 auto valved(Chain)(Chain chain)
@@ -33,9 +28,6 @@ auto valved(Chain)(Chain chain)
         // release data to the outlet
         void release(size_t elements)
         {
-            import std.stdio;
-            /*stderr.writeln("releasing ", elements, " elements to outlet");
-            stderr.writefln("ready = %s, downstream = %s, chain.window.length = %s", ready, downstream, chain.window.length);*/
             assert(ready + elements <= chain.window.length);
             ready += elements;
         }
@@ -43,12 +35,7 @@ auto valved(Chain)(Chain chain)
         size_t extend(size_t elements)
         {
             // get more data for inlet
-            import std.stdio;
-            //stderr.writefln("before extend, window.length == %s, ready = %s, downstream = %s", window.length, ready, downstream);
-            //return chain.extend(elements);
-            auto x = chain.extend(elements);
-            //stderr.writefln("after extend, window.length == %s, ready = %s, downstream = %s, returning %s", window.length, ready, downstream, x);
-            return x;
+            return chain.extend(elements);
         }
 
         mixin implementValve!(chain);
@@ -99,8 +86,6 @@ auto autoValve(Outlet)(Outlet o) if( hasMember!(Outlet, "valve") )
 
         void release(size_t elements)
         {
-            import std.stdio;
-            //stderr.writeln("releasing ", elements, " elements");
             outlet.valve.release(elements);
         }
 
@@ -117,12 +102,9 @@ auto autoValve(Outlet)(Outlet o) if( hasMember!(Outlet, "valve") )
         // flush the data waiting in the outlet
         size_t flush()
         {
-            import std.stdio;
-            //stderr.writeln("flush");
             outlet.extend(0);
             auto result = outlet.window.length;
             outlet.release(result);
-            //stderr.writeln("flush done");
             return result;
         }
     }

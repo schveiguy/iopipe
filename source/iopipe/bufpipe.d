@@ -6,27 +6,53 @@ Authors:   Steven Schveighoffer
  */
 module iopipe.bufpipe;
 import iopipe.buffer;
-import iopipe.valve;
+import iopipe.traits;
+import std.traits : isArray, hasMember;
 import std.range.primitives;
 
-// simple array source processor
-struct ArrayProcessor(T)
+/**
+ * An example processor. This demonstrates the required items for implementing
+ * a buffer pipe.
+ *
+ * SimplePipe will only extend exactly the elements requested (from what is
+ * availble), so it can be used for testing with a static buffer to simulate
+ * data coming in at any rate.
+ */
+struct SimplePipe(Chain) if(isIopipe!Chain)
 {
-    T[] source;
-    T[] window() { return source; }
-    size_t extend(size_t elements) { return 0; }
-    void release(size_t elements) { source = source[elements..$]; }
-}
+    private
+    {
+        Chain chain;
+        private size_t downstreamElements;
+    }
 
-// prototypical processor, does nothing but extend/release when asked.
-struct SimpleProcessor(Chain)
-{
-    Chain chain;
-    size_t downstreamElements;
+    /**
+     * Build on top of an existing chain 
+     */
+    this(Chain c)
+    {
+        this.chain = c;
+    }
+
+    /**
+     * Get the current window of elements for the pipe. This is the data that
+     * can be used at this moment in time.
+     */
     auto window() { return chain.window[0..downstreamElements]; }
+
+    /**
+     * Get more data from the pipe. The parameter indicates the desired number
+     * of elements to add to the end of the window. If 0 is passed, then it is
+     * up to the implementation of the pipe to determine the optimal number of
+     * elements to add.
+     *
+     * Params: elements - Number of elements requested.
+     * Returns: The number of elements added. This can be less than or more
+     *          than the parameter, but will only be 0 when no more elements
+     *          can be added. This signifies EOF.
+     */
     size_t extend(size_t elements)
     {
-        // normally, do processing in here
         auto left = chain.window.length - downstreamElements;
         if(elements == 0)
         {
@@ -57,13 +83,98 @@ struct SimpleProcessor(Chain)
         }
     }
 
+    /**
+     * Release the given number of elements from the front of the window. After
+     * calling this, make sure to update any tracking indexes for the window
+     * that you are maintaining.
+     *
+     * Params: elements - The number of elements to release.
+     */
     void release(size_t elements)
     {
+        assert(elements <= downstreamElements);
         downstreamElements -= elements;
         chain.release(elements);
     }
 
-    mixin implementValve!(chain);
+    static if(hasValve!(Chain))
+    {
+        /**
+         * Implement the required valve function. If the pipe you are building
+         * on top of has a valve, you must provide ref access to the valve.
+         *
+         * Note, the correct boilerplate implementation can be inserted by
+         * adding the following line to your pipe structure:
+         *
+         * ------
+         * mixin implementValve!(nameOfSubpipe);
+         * ------
+         *
+         * Returns: A valve inlet that allows you to control flow of the data
+         * through this pipe.
+         *
+         * See Also: iopipe.valve
+         */
+        ref valve() { return chain.valve; }
+    }
+}
+
+///
+unittest
+{
+    // any array is a valid iopipe source.
+    auto source = "hello, world!";
+
+    auto pipe = SimplePipe!(string)(source);
+
+    // SimplePipe holds back data until you extend it.
+    assert(pipe.window.length == 0);
+
+    // Note: elements of narrow strings are code units for purposes of iopipe
+    // library.
+    assert(pipe.extend(5) == 5);
+    assert(pipe.window == "hello");
+
+    // Release data to inform the pipe you are done with it
+    pipe.release(3);
+    assert(pipe.window == "lo");
+
+    // you can request "some data" by extending with 0, letting the pipe define
+    // what is the best addition of data. This is useful for optimizing OS
+    // system call reads.
+    assert(pipe.extend(0) == 1);
+    assert(pipe.window == "lo,");
+
+    // you aren't guaranteed to get all the data you ask for.
+    assert(pipe.extend(100) == 7);
+    assert(pipe.window == "lo, world!");
+
+    pipe.release(pipe.window.length);
+
+    // this signifies EOF.
+    assert(pipe.extend(1) == 0);
+}
+
+unittest
+{
+    import std.range : iota, array;
+    import std.algorithm : equal;
+    auto buf = iota(100).array;
+    auto p = SimplePipe!(typeof(buf))(buf);
+
+    assert(p.window.length == 0);
+    assert(p.extend(50) == 50);
+    assert(p.window.length == 50);
+    assert(p.window.equal(iota(50)));
+    p.release(20);
+    assert(p.window.length == 30);
+    assert(p.window.equal(iota(20, 50)));
+    assert(p.extend(100) == 50);
+    assert(p.window.length == 80);
+    assert(p.window.equal(iota(20, 100)));
+    p.release(80);
+    assert(p.extend(1) == 0);
+    assert(p.window.length == 0);
 }
 
 private void swapBytes(R)(R data) if(typeof(R.init[0]).sizeof == 4 || typeof(R.init[0]).sizeof == 2)
@@ -113,10 +224,32 @@ private void swapBytes(R)(R data) if(typeof(R.init[0]).sizeof == 4 || typeof(R.i
     }
 }
 
-// byteswap every T before passing down
-auto byteSwapper(Chain)(Chain c)
+unittest
 {
-    struct ByteSwapProcessor
+    void doIt(T)(T[] t)
+    {
+        import std.algorithm;
+        import std.range;
+        auto compareTo = t.map!(a => (a << ((T.sizeof-1) * 8))).array;
+        swapBytes(t);
+        assert(t == compareTo);
+    }
+
+    doIt(cast(ushort[])[1, 2, 3, 4, 5]);
+    doIt(cast(uint[])[6, 7, 8, 9, 10]);
+}
+
+/**
+ * Swap the bytes of every element before handing to next processor.
+ *
+ * This is useful if the endianness of the data does not match the platform.
+ *
+ * Params: c - Source pipe chain for the byte swapper.
+ * Returns: A new pipe chain that swaps bytes of all elements.
+ */
+auto byteSwapper(Chain)(Chain c) if(isIopipe!(Chain) && is(typeof(swapBytes(c.window))))
+{
+    static struct ByteSwapProcessor
     {
         Chain chain;
 
@@ -139,17 +272,43 @@ auto byteSwapper(Chain)(Chain c)
     return ByteSwapProcessor(c);
 }
 
-auto arrayConvert(T, Chain)(Chain c)
+unittest
 {
-    struct ArrayConversionProcessor
+    import std.algorithm;
+    auto arr = [1, 2, 3, 4, 5];
+    auto c = arr.dup.byteSwapper;
+    assert(c.window.equal(arr.map!(a => (a << 24))));
+}
+
+/**
+ * Given a pipe chain whose window is a straight array, create a pipe chain that
+ * converts the array to another array type.
+ *
+ * Note: This new pipe chain handles any alignment issues when partial
+ *       elements have been extended/released. Also, the size of the new
+ *       element type must be a multiple of, or divide evenly into, the
+ *       original array.
+ *
+ * Params: T - Element type for new pipe chain window
+ *         c - Source pipe chain to use for new chain.
+ *
+ * Returns: New pipe chain with new array type.
+ */
+auto arrayCastPipe(T, Chain)(Chain c) if(isIopipe!(Chain) && isArray!(windowType!(Chain)))
+{
+    static struct ArrayCastPipe
     {
         Chain chain;
+
+        // upstream element type
         alias UE = typeof(Chain.init.window()[0]);
+
         static if(UE.sizeof > T.sizeof)
         {
+            // needed to keep track of partially released elements.
             ubyte offset;
             enum Ratio = UE.sizeof / T.sizeof;
-            static assert(UE.sizeof % T.sizeof == 0); // only support multiple sizes
+            static assert(UE.sizeof % T.sizeof == 0); // only support multiples
         }
         else
         {
@@ -216,11 +375,39 @@ auto arrayConvert(T, Chain)(Chain c)
         mixin implementValve!(chain);
     }
 
-    return ArrayConversionProcessor(c);
+    return ArrayCastPipe(c);
 }
 
-// ensure at least a certain number of elements in a chain
-// are available, unless EOF occurs.
+unittest
+{
+    // test going from int to ubyte
+    auto arr = [1, 2, 3, 4, 5];
+    auto arr2 = cast(ubyte[])arr;
+    auto p = arr.arrayCastPipe!(ubyte);
+    assert(p.window == arr2);
+    p.release(3);
+    assert(p.window == arr2[3 .. $]);
+    // we can only release when all 4 bytes of the array are gone
+    assert(p.chain == arr);
+    p.release(1);
+    assert(p.chain == arr[1 .. $]);
+
+    // test going from ubyte to int, but shave off one byte
+    assert(arr2[0 .. $-1].arrayCastPipe!(int).window == arr[0 .. $-1]);
+}
+
+/**
+ * Extend a pipe until it has a minimum number of elements. If the minimum
+ * elements are already present, does nothing.
+ *
+ * This is useful if you need a certain number of elements in the pipe before
+ * you can process any more data.
+ *
+ * Params: chain - The pipe to work on.
+ *         elems - The number of elements to ensure are in the window.
+ * Returns: The resulting number of elements in the window. This may be less
+ *          than the requested elements if the pipe ran out of data.
+ */
 size_t ensureElems(Chain)(ref Chain chain, size_t elems)
 {
     while(chain.window.length < elems)
@@ -231,31 +418,31 @@ size_t ensureElems(Chain)(ref Chain chain, size_t elems)
     return chain.window.length;
 }
 
-struct NullDevice
+unittest
 {
-    size_t read(T)(T buf)
-    {
-        // null data doesn't matter
-        return buf.length;
-    }
-
-    // write also does nothing
-    alias write = read;
+    auto p = SimplePipe!(string)("hello, world");
+    assert(p.ensureElems(5) == 5);
+    assert(p.window == "hello");
+    assert(p.ensureElems(3) == 5);
+    assert(p.window == "hello");
+    assert(p.ensureElems(100) == 12);
+    assert(p.window == "hello, world");
 }
 
-struct ZeroSource
+/**
+ * A buffered source ties a buffer to an input source into a pipe definition.
+ *
+ * Params: BufType - The type of the buffer.
+ *         Source - The type of the input stream. This must have a function `read` that can read into the buffer's window.
+ *         dev - The input stream to use.
+ *         b - The buffer to use
+ *
+ * Returns: An iopipe that uses the given buffer to read data from the given device source.
+ */
+auto bufferedSource(BufType = ArrayBuffer!ubyte, Source)(Source dev, BufType b = BufType.init)
+    if(isBuffer!(BufType) && hasMember!(Source, "read") && is(typeof(dev.read(b.window))))
 {
-    size_t read(T)(T buf)
-    {
-        // zero data
-        buf[] = 0;
-        return buf.length;
-    }
-}
-
-auto bufferedSource(BufType, Source)(Source dev, BufType b)
-{
-    struct BufferedInputSource
+    static struct BufferedInputSource
     {
         Source dev;
         BufType buffer;
@@ -299,15 +486,29 @@ auto bufferedSource(BufType, Source)(Source dev, BufType b)
     return BufferedInputSource(dev, b);
 }
 
-auto bufferedSource(BufType = ArrayBuffer!ubyte, Source)(Source dev)
+unittest
 {
-    auto b = BufType.createDefault();
-    return bufferedSource(dev, b);
+    // TODO: fill me out
 }
 
-auto outputProcessor(Chain, Sink)(Chain c, Sink dev)
+/**
+ * An output pipe writes all its data to a given sink stream.  Any data in the
+ * output pipe's window has been written to the stream.
+ *
+ * The returned iopipe has a function "flush" that will extend a chunk of data
+ * and then release it immediately.
+ *
+ * Params: c - The input data to the stream.
+ *         dev - The output stream to write data to. This must have a function
+ *               `write` that can write a c.window.
+ *
+ * Returns: An iopipe that gives a view of the written data. Note that you
+ *          don't have to do anything with the data.
+ *
+ */
+auto outputPipe(Chain, Sink)(Chain c, Sink dev) if(isIopipe!Chain && is(typeof(dev.write(c.window))))
 {
-    struct OutputProcessor
+    static struct OutputPipe
     {
         Sink dev;
         Chain chain;
@@ -352,21 +553,37 @@ auto outputProcessor(Chain, Sink)(Chain c, Sink dev)
         mixin implementValve!(chain);
     }
 
-    auto result = OutputProcessor(dev, c);
+    auto result = OutputPipe(dev, c);
     result.ensureWritten(result.window.length);
     return result;
 }
 
-// run a chain until eof. Returns number of elements processed
+unittest
+{
+    // TODO: fill me out
+}
+
+/**
+ * Process a given iopipe chain until it has reached EOF. This is accomplished
+ * by extending and releasing continuously until extend returns 0.
+ *
+ * Params: c - The iopipe to process
+ * Returns: The number of elements processed.
+ */
 size_t process(Chain)(Chain c)
 {
     size_t result = 0;
     do
     {
-        auto bytesInChain = c.window.length;
-        result += bytesInChain;
-        c.release(bytesInChain);
+        auto elementsInChain = c.window.length;
+        result += elementsInChain;
+        c.release(elementsInChain);
     } while(c.extend(0) != 0);
 
     return result;
+}
+
+unittest
+{
+    // TODO: fill me out
 }

@@ -16,7 +16,8 @@ void processLines(UTFType utfType, Dev)(Dev dev)
 
 void main()
 {
-    auto dev = new IODevice(0).bufferedSource;
+    import std.experimental.allocator;
+    auto dev = new IODevice(0).bufferedSource(AllocatorBuffer!ubyte(theAllocator));
     dev.ensureElems(4);
     switch(dev.window.detectBOM)
     {

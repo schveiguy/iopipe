@@ -9,10 +9,10 @@ void doConvert(UTFType oEnc, Input)(Input input)
     import iopipe.valve;
     auto outputDev = new IODevice(1); // stdout
     auto oChain = NullDevice.init
-        .bufferedSource(ArrayBuffer!(CodeUnit!oEnc).createDefault)
+        .bufferedSource(ArrayBuffer!(CodeUnit!oEnc)())
         .valved
         .encodeText!(oEnc)
-        .outputProcessor(outputDev)
+        .outputPipe(outputDev)
         .autoValve // drive from the valve
         .textOutput;
     if(input.window.length > 0 && input.window.front != 0xfeff)
@@ -36,7 +36,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
     if(oEnc == iEnc)
     {
         // straight pass-through
-        input.outputProcessor(new IODevice(1)).process();
+        input.outputPipe(new IODevice(1)).process();
     }
     else
     {
@@ -51,7 +51,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             static if(iEnc == UTFType.UTF16BE)
             {
                 // just changing byte order. Just do a byte swapper.
-                input.arrayConvert!(ushort).byteSwapper.arrayConvert!(ubyte).outputProcessor(new IODevice(1)).process();
+                input.arrayCastPipe!(ushort).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODevice(1)).process();
             }
             else
             {
@@ -64,7 +64,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             static if(iEnc == UTFType.UTF16LE)
             {
                 // just changing byte order. Just do a byte swapper.
-                input.arrayConvert!(ushort).byteSwapper.arrayConvert!(ubyte).outputProcessor(new IODevice(1)).process();
+                input.arrayCastPipe!(ushort).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODevice(1)).process();
             }
             else
             {
@@ -77,7 +77,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             static if(iEnc == UTFType.UTF32BE)
             {
                 // just changing byte order. Just do a byte swapper.
-                input.arrayConvert!(uint).byteSwapper.arrayConvert!(ubyte).outputProcessor(new IODevice(1)).process();
+                input.arrayCastPipe!(uint).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODevice(1)).process();
             }
             else
             {
@@ -90,7 +90,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             static if(iEnc == UTFType.UTF32LE)
             {
                 // just changing byte order. Just do a byte swapper.
-                input.arrayConvert!(uint).byteSwapper.arrayConvert!(ubyte).outputProcessor(new IODevice(1)).process();
+                input.arrayCastPipe!(uint).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODevice(1)).process();
             }
             else
             {

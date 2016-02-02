@@ -76,22 +76,22 @@ auto doByteSwap(bool littleEndian, R)(R r)
 auto asText(UTFType b, Chain)(Chain chain)
 {
     static if(b == UTFType.UTF8 || b == UTFType.Unknown)
-        return chain.arrayConvert!(char);
+        return chain.arrayCastPipe!(char);
     else static if(b == UTFType.UTF16LE)
     {
-        return doByteSwap!(true)(chain.arrayConvert!(wchar));
+        return doByteSwap!(true)(chain.arrayCastPipe!(wchar));
     }
     else static if(b == UTFType.UTF16BE)
     {
-        return doByteSwap!(false)(chain.arrayConvert!(wchar));
+        return doByteSwap!(false)(chain.arrayCastPipe!(wchar));
     }
     else static if(b == UTFType.UTF32LE)
     {
-        return doByteSwap!(true)(chain.arrayConvert!(dchar));
+        return doByteSwap!(true)(chain.arrayCastPipe!(dchar));
     }
     else static if(b == UTFType.UTF32BE)
     {
-        return doByteSwap!(false)(chain.arrayConvert!(dchar));
+        return doByteSwap!(false)(chain.arrayCastPipe!(dchar));
     }
     else
         static assert(0);
@@ -273,30 +273,19 @@ auto textOutput(Chain)(Chain c)
 
 auto encodeText(UTFType enc, Chain)(Chain c)
 {
+    static assert(is(typeof(c.window[0]) == CodeUnit!enc));
+
     static if(enc == UTFType.UTF8)
     {
-        static assert(is(typeof(c.window[0]) == char));
-        return c.arrayConvert!ubyte;
+        return c.arrayCastPipe!ubyte;
     }
-    else static if(enc == UTFType.UTF16LE)
+    else static if(enc == UTFType.UTF16LE || enc == UTFType.UTF32LE)
     {
-        static assert(is(typeof(c.window[0]) == wchar));
-        return c.doByteSwap!(true).arrayConvert!ubyte;
+        return c.doByteSwap!(true).arrayCastPipe!ubyte;
     }
-    else static if(enc == UTFType.UTF16BE)
+    else static if(enc == UTFType.UTF16BE || enc == UTFType.UTF32BE)
     {
-        static assert(is(typeof(c.window[0]) == wchar));
-        return c.doByteSwap!(false).arrayConvert!ubyte;
-    }
-    else static if(enc == UTFType.UTF32LE)
-    {
-        static assert(is(typeof(c.window[0]) == dchar));
-        return c.doByteSwap!(true).arrayConvert!ubyte;
-    }
-    else static if(enc == UTFType.UTF32BE)
-    {
-        static assert(is(typeof(c.window[0]) == dchar));
-        return c.doByteSwap!(false).arrayConvert!ubyte;
+        return c.doByteSwap!(false).arrayCastPipe!ubyte;
     }
     else
         assert(0);
