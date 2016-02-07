@@ -14,7 +14,7 @@ void processLines(UTFType utfType, Dev)(Dev dev)
     foreach(l; dev.asText!(utfType).byLine.asRange)
     {
         if(doOutput)
-            write("read line: ", l);
+            writeln("read line: ", l.length);
     }
 }
 

@@ -292,6 +292,7 @@ byline_outer_2:
                                 checked += i < skippableElems ? i + 1 : skippableElems;
                                 continue byline_outer_2;
                             }
+                            ++i;
                         }
                         // found it
                         checked += validDelimElems;
