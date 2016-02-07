@@ -296,12 +296,12 @@ unittest
  */
 auto arrayCastPipe(T, Chain)(Chain c) if(isIopipe!(Chain) && isArray!(windowType!(Chain)))
 {
+    // upstream element type
+    alias UE = typeof(Chain.init.window()[0]);
+
     static struct ArrayCastPipe
     {
         Chain chain;
-
-        // upstream element type
-        alias UE = typeof(Chain.init.window()[0]);
 
         static if(UE.sizeof > T.sizeof)
         {
@@ -319,14 +319,19 @@ auto arrayCastPipe(T, Chain)(Chain c) if(isIopipe!(Chain) && isArray!(windowType
         auto window()
         {
             static if(UE.sizeof > T.sizeof)
-                return (cast(T[])chain.window)[offset..$];
+            {
+                // note, we avoid a cast of arrays because that invokes a runtime call
+                auto w = chain.window;
+                return (cast(T*)w.ptr)[offset .. w.length * Ratio];
+            }
             else static if(UE.sizeof == T.sizeof)
+                // ok to cast array here, because it's the same size (no runtime call)
                 return cast(T[])chain.window;
             else
             {
-                auto win = chain.window;
-                auto extraElems = win.length % Ratio;
-                    return cast(T[])chain.window[0..$-extraElems];
+                // note, we avoid a cast of arrays because that invokes a runtime call
+                auto w = chain.window;
+                return (cast(T*)w.ptr)[0 .. w.length / Ratio];
             }
         }
 

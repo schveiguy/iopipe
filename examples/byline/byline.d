@@ -4,20 +4,26 @@ import iopipe.stream;
 import iopipe.buffer;
 import std.stdio;
 
+bool doOutput = true;
+
 void processLines(UTFType utfType, Dev)(Dev dev)
 {
     import std.conv: to;
-    writeln("encoding is: ", utfType.to!string);
-    foreach(l; dev.asText!(utfType).byLine)
+    if(doOutput)
+        writeln("encoding is: ", utfType.to!string);
+    foreach(l; dev.asText!(utfType).byLine.asRange)
     {
-        write("read line: ", l);
+        if(doOutput)
+            write("read line: ", l);
     }
 }
 
-void main()
+void main(string[] args)
 {
+    if(args.length > 1 && args[1] == "-nooutput")
+        doOutput = false;
     import std.experimental.allocator;
-    auto dev = new IODevice(0).bufferedSource(AllocatorBuffer!ubyte(theAllocator));
+    auto dev = new IODevice(0).bufferedSource;
     dev.ensureElems(4);
     switch(dev.window.detectBOM)
     {

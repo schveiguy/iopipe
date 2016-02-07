@@ -6,6 +6,7 @@ Authors:   Steven Schveighoffer
  */
 module iopipe.textpipe;
 import iopipe.bufpipe;
+import iopipe.traits;
 
 enum UTFType
 {
@@ -71,81 +72,266 @@ auto doByteSwap(bool littleEndian, R)(R r)
     }
 }
 
+// ensure that part of a code point isn't at the end of the window
+auto ensureDecodeable(Chain)(Chain c)
+{
+    import std.traits: Unqual;
+    alias CodeUnitType = Unqual!(typeof(c.window[0]));
+    static if(is(CodeUnitType == dchar))
+    {
+        // always decodeable
+        return c;
+    }
+    else
+    {
+        static struct DecodeableWindow
+        {
+            Chain chain;
+            ubyte partial;
+            auto window() { return chain.window[0 .. $-partial]; }
+            void release(size_t elements) { chain.release(elements); }
+            private void determinePartial()
+            {
+                static if(is(CodeUnitType == char))
+                {
+                    auto w = chain.window;
+                    // ends on a multi-char sequence. Ensure it's valid.
+                    // find the encoding
+ee_outer:
+                    foreach(ubyte i; 1 .. 4)
+                    {
+                        import core.bitop : bsr;
+                        import std.stdio;
+                        if(w.length < i)
+                        {
+                            // either no data, or invalid sequence.
+                            if(i > 1)
+                            {
+                                // TODO: throw some error?
+                                stderr.writeln("oops!");
+                            }
+                            partial = 0;
+                            break ee_outer;
+                        }
+                        immutable highestBit = bsr(~w[$ - i] & 0x0ff);
+                        switch(highestBit)
+                        {
+                        case 7:
+                            // ascii character
+                            if(i > 1)
+                            {
+                                stderr.writeln("oops!");
+                            }
+                            partial = 0;
+                            break ee_outer;
+                        case 6:
+                            // need to continue looking
+                            break;
+                        case 3: .. case 5:
+                            // 5 -> 2 byte sequence
+                            // 4 -> 3 byte sequence
+                            // 3 -> 4 byte sequence
+                            if(i + highestBit == 7)
+                                // complete sequence, let it pass.
+                                partial = 0;
+                            else
+                                // skip these, the whole sequence isn't there yet.
+                                partial = i;
+                            break ee_outer;
+                        default:
+                            // invalid sequence, let it fail
+                            // TODO: throw some error?
+                            stderr.writeln("oops!");
+                            partial = 0;
+                            break ee_outer;
+                        }
+                    }
+                }
+                else // wchar
+                {
+                    // if the last character is in 0xD800 - 0xDBFF, then it is
+                    // the first wchar of a surrogate pair. This means we must
+                    // leave it off the end.
+                    partial = (chain.window[$-1] & 0xFC00) == 0xD800 ? 1 : 0;
+                }
+            }
+            size_t extend(size_t elements)
+            {
+                auto origWindowSize = window.length;
+                chain.extend(elements > partial ? elements - partial : elements);
+                determinePartial();
+                // TODO: may need to loop if we are getting one char at a time.
+                return window.length - origWindowSize;
+            }
+
+            mixin implementValve!chain;
+        }
+
+        auto r = DecodeableWindow(c);
+        r.determinePartial();
+        return r;
+    }
+}
 
 // call this after detecting the byte order/width
-auto asText(UTFType b, Chain)(Chain chain)
+auto asText(UTFType b, Chain)(Chain c)
 {
     static if(b == UTFType.UTF8 || b == UTFType.Unknown)
-        return chain.arrayCastPipe!(char);
+        return c.arrayCastPipe!(char).ensureDecodeable;
     else static if(b == UTFType.UTF16LE)
     {
-        return doByteSwap!(true)(chain.arrayCastPipe!(wchar));
+        return doByteSwap!(true)(c.arrayCastPipe!(wchar)).ensureDecodeable;
     }
     else static if(b == UTFType.UTF16BE)
     {
-        return doByteSwap!(false)(chain.arrayCastPipe!(wchar));
+        return doByteSwap!(false)(c.arrayCastPipe!(wchar)).ensureDecodeable;
     }
     else static if(b == UTFType.UTF32LE)
     {
-        return doByteSwap!(true)(chain.arrayCastPipe!(dchar));
+        return doByteSwap!(true)(c.arrayCastPipe!(dchar)).ensureDecodeable;
     }
     else static if(b == UTFType.UTF32BE)
     {
-        return doByteSwap!(false)(chain.arrayCastPipe!(dchar));
+        return doByteSwap!(false)(c.arrayCastPipe!(dchar)).ensureDecodeable;
     }
     else
         static assert(0);
 }
 
-auto byLine(Chain)(Chain chain)
+auto asRange(Chain)(Chain c) if(isIopipe!Chain)
 {
-    alias Elem = typeof(chain.window[0..1]);
-    struct Result
+    alias Elem = typeof(c.window[0..1]);
+    static struct IoPipeRange
     {
         Chain chain;
-        size_t checked;
         bool empty() { return chain.window.length == 0; }
-        Elem front() { return chain.window[0 .. checked]; }
-        void popFront()
+        Elem front() { return chain.window; }
+        void popFront() { chain.release(chain.window.length); chain.extend(0); }
+    }
+
+    if(c.window.length == 0)
+        // attempt to prime the range, since empty will be true right away!
+        c.extend(0);
+    return IoPipeRange(c);
+}
+
+auto byLine(Chain)(Chain c, dchar delim = '\n')
+   /*if(isIopipe!Chain &&
+      is(Unqual!(ElementType!(windowType!Chain)) == dchar))*/
+{
+    import std.traits: Unqual;
+    alias CodeUnitType = Unqual!(typeof(c.window[0]));
+    static struct ByLinePipe
+    {
+        private
         {
-            chain.release(checked);
-            checked = 0;
-            int done = 0;
-            while(!done)
+            Chain chain;
+            size_t checked;
+            size_t _lines;
+            CodeUnitType[dchar.sizeof / CodeUnitType.sizeof] delimElems;
+            static if(is(CodeUnitType == dchar))
             {
-                foreach(i, dchar elem; chain.window[checked..$])
+                enum validDelimElems = 1;
+                enum skippableElems = 1;
+            }
+            else
+            {
+                // number of elements in delimElems that are valid
+                ubyte validDelimElems;
+                // number of elements that can be skipped if the sequence fails
+                // to match. This basically is the number of elements that are
+                // not the first element (except the first element of course).
+                ubyte skippableElems;
+            }
+        }
+
+        auto window() { return chain.window[0 .. checked]; }
+        void release(size_t elements)
+        {
+            checked -= elements;
+            chain.release(elements);
+        }
+
+        size_t extend(size_t elements = 0)
+        {
+            auto prevChecked = checked;
+            if(validDelimElems == 1)
+            {
+                // simple scan per element
+byline_outer_1:
+                do
                 {
-                    if(done == 1)
+                    auto w = chain.window;
+                    while(checked < w.length)
                     {
-                        done = 2;
-                        checked += i;
-                        break;
+                        if(w[checked] == delimElems[0])
+                        {
+                            // found it.
+                            ++checked;
+                            break byline_outer_1;
+                        }
+                        ++checked;
                     }
-                    else if(elem == '\n')
+                } while(chain.extend(elements) != 0);
+            }
+            else // shouldn't be compiled in the case of dchar
+            {
+                // need to check multiple elements
+byline_outer_2:
+                while(true)
+                {
+                    auto w = chain.window;
+                    while(checked + validDelimElems <= w.length)
                     {
-                        done = 1;
+                        size_t i = 0;
+                        auto ptr = delimElems.ptr;
+                        while(i < validDelimElems)
+                        {
+                            if(w[checked + i] != *ptr++)
+                            {
+                                checked += i < skippableElems ? i + 1 : skippableElems;
+                                continue byline_outer_2;
+                            }
+                        }
+                        // found it
+                        checked += validDelimElems;
+                        break byline_outer_2;
                     }
-                }
-                if(done == 1)
-                {
-                    // ended at end of window
-                    checked = chain.window.length;
-                }
-                else if(!done)
-                {
-                    // try and get more data
-                    if(chain.extend(0) == 0)
+
+                    // need to read more data
+                    if(chain.extend(elements) == 0)
                     {
-                        // eof
                         checked = chain.window.length;
-                        done = 2;
+                        break;
                     }
                 }
             }
+
+            if(checked != prevChecked)
+                ++_lines;
+            return checked - prevChecked;
+        }
+
+        size_t lines() { return _lines; }
+    }
+    auto r = ByLinePipe(c);
+    // set up the delimeter
+    static if(is(CodeUnitType == dchar))
+    {
+        r.delimElems[0] = delim;
+    }
+    else
+    {
+        import std.utf: encode;
+        r.validDelimElems = cast(ubyte)encode(r.delimElems, delim);
+        r.skippableElems = 1; // need to be able to skip at least one element
+        foreach(x; r.delimElems[1 .. r.validDelimElems])
+        {
+            if(x == r.delimElems[0])
+                break;
+            ++r.skippableElems;
         }
     }
-    auto r = Result(chain);
-    r.popFront();
     return r;
 }
 
