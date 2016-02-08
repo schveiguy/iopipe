@@ -18,7 +18,7 @@ import std.range.primitives;
  * availble), so it can be used for testing with a static buffer to simulate
  * data coming in at any rate.
  */
-struct SimplePipe(Chain) if(isIopipe!Chain)
+struct SimplePipe(Chain, size_t extendElementsDefault = 1) if(isIopipe!Chain)
 {
     private
     {
@@ -56,17 +56,18 @@ struct SimplePipe(Chain) if(isIopipe!Chain)
         auto left = chain.window.length - downstreamElements;
         if(elements == 0)
         {
+            elements = extendElementsDefault;
             // special case
-            if(left != 0)
+            if(elements <= left)
             {
-                downstreamElements += 1;
-                return 1;
+                downstreamElements += elements;
+                return elements;
             }
             else
             {
                 elements = chain.extend(0);
-                downstreamElements += elements;
-                return elements;
+                downstreamElements += left + elements;
+                return left + elements;
             }
         }
         else if(elements <= left)
@@ -239,37 +240,69 @@ unittest
     doIt(cast(uint[])[6, 7, 8, 9, 10]);
 }
 
-/**
- * Swap the bytes of every element before handing to next processor.
- *
- * This is useful if the endianness of the data does not match the platform.
- *
- * Params: c - Source pipe chain for the byte swapper.
- * Returns: A new pipe chain that swaps bytes of all elements.
- */
-auto byteSwapper(Chain)(Chain c) if(isIopipe!(Chain) && is(typeof(swapBytes(c.window))))
+// should be a voldemort type, but that results in template bloat
+private struct ByteSwapProcessor(Chain)
 {
-    static struct ByteSwapProcessor
+    Chain chain;
+
+    auto window() { return chain.window; }
+    size_t extend(size_t elements)
     {
-        Chain chain;
-
-        auto window() { return chain.window; }
-        size_t extend(size_t elements)
-        {
-            auto newData = chain.extend(elements);
-            auto data = chain.window;
-            swapBytes(data[$-newData..$]);
-            return newData;
-        }
-
-        void release(size_t elements) { chain.release(elements); }
-
-        mixin implementValve!(chain);
+        auto newData = chain.extend(elements);
+        auto data = chain.window;
+        swapBytes(data[$-newData..$]);
+        return newData;
     }
-    
-    // need to byteswap existing data, since we only byteswap on extend
-    swapBytes(c.window);
-    return ByteSwapProcessor(c);
+
+    void release(size_t elements) { chain.release(elements); }
+
+    mixin implementValve!(chain);
+}
+
+version(LittleEndian)
+    private enum IsLittleEndian = true;
+else
+    private enum IsLittleEndian = false;
+
+/**
+ * Swap the bytes of every element before handing to next processor. The
+ * littleEndian compile-time parameter indicates what endianness the data is
+ * in. If it matches the platform's endianness, then nothing is done (no byte
+ * swap occurs). Otherwise, a byte swap processor is returned wrapping the io
+ * pipe.
+ *
+ * By default, littleEndian is set to perform byte swaps.
+ *
+ * Params: littleEndian - true if the data arrives in little endian mode, false
+ *             if in big endian mode.
+ *         c - Source pipe chain for the byte swapper.
+ * Returns: If endianness of the source matches platform, this returns c,
+ *          otherwise, it returns a byte swapping iopipe wrapper that performs
+ *          the byte swaps.
+ */
+auto byteSwapper(bool littleEndian = !IsLittleEndian, Chain)(Chain c) if(isIopipe!(Chain) && is(typeof(swapBytes(c.window))))
+{
+    version(LittleEndian)
+    {
+        static if(littleEndian)
+            return c;
+        else
+        {
+            swapBytes(c.window);
+            return ByteSwapProcessor!Chain(c); 
+        }
+    }
+    else
+    {
+        static if(littleEndian)
+        {
+            // need to byteswap existing data, since we only byteswap on extend
+            swapBytes(c.window);
+            return ByteSwapProcessor!Chain(c);
+        }
+        else
+            return c;
+    }
 }
 
 unittest
@@ -278,6 +311,89 @@ unittest
     auto arr = [1, 2, 3, 4, 5];
     auto c = arr.dup.byteSwapper;
     assert(c.window.equal(arr.map!(a => (a << 24))));
+}
+
+private struct ArrayCastPipe(Chain, T)
+{
+    Chain chain;
+    // upstream element type
+    alias UE = typeof(Chain.init.window()[0]);
+
+    static if(UE.sizeof > T.sizeof)
+    {
+        // needed to keep track of partially released elements.
+        ubyte offset;
+        enum Ratio = UE.sizeof / T.sizeof;
+        static assert(UE.sizeof % T.sizeof == 0); // only support multiples
+    }
+    else
+    {
+        enum Ratio = T.sizeof / UE.sizeof;
+        static assert(T.sizeof % UE.sizeof == 0);
+    }
+
+    auto window()
+    {
+        static if(UE.sizeof > T.sizeof)
+        {
+            // note, we avoid a cast of arrays because that invokes a runtime call
+            auto w = chain.window;
+            return (cast(T*)w.ptr)[offset .. w.length * Ratio];
+        }
+        else static if(UE.sizeof == T.sizeof)
+            // ok to cast array here, because it's the same size (no runtime call)
+            return cast(T[])chain.window;
+        else
+        {
+            // note, we avoid a cast of arrays because that invokes a runtime call
+            auto w = chain.window;
+            return (cast(T*)w.ptr)[0 .. w.length / Ratio];
+        }
+    }
+
+    size_t extend(size_t elements)
+    {
+        static if(UE.sizeof < T.sizeof)
+        {
+            // need a minimum number of items
+            auto win = chain.window;
+            immutable origLength = win.length / Ratio;
+            auto targetLength = win.length + Ratio - win.length % Ratio;
+            while(win.length < targetLength)
+            {
+                if(chain.extend(elements * Ratio) == 0)
+                {
+                    return 0;
+                }
+                win = chain.window;
+            }
+            return window.length - origLength;
+        }
+        else
+        {
+            // need to round up to the next UE.
+            immutable translatedElements = (elements + Ratio - 1) / Ratio;
+            return chain.extend(translatedElements) * Ratio;
+        }
+    }
+
+    void release(size_t elements)
+    {
+        static if(UE.sizeof <= T.sizeof)
+        {
+            chain.release(elements * Ratio);
+        }
+        else
+        {
+            // may need to keep one of the upstream elements because we only
+            // released part of it
+            elements += offset;
+            offset = elements % Ratio;
+            chain.release(elements / Ratio);
+        }
+    }
+
+    mixin implementValve!(chain);
 }
 
 /**
@@ -296,91 +412,7 @@ unittest
  */
 auto arrayCastPipe(T, Chain)(Chain c) if(isIopipe!(Chain) && isArray!(windowType!(Chain)))
 {
-    // upstream element type
-    alias UE = typeof(Chain.init.window()[0]);
-
-    static struct ArrayCastPipe
-    {
-        Chain chain;
-
-        static if(UE.sizeof > T.sizeof)
-        {
-            // needed to keep track of partially released elements.
-            ubyte offset;
-            enum Ratio = UE.sizeof / T.sizeof;
-            static assert(UE.sizeof % T.sizeof == 0); // only support multiples
-        }
-        else
-        {
-            enum Ratio = T.sizeof / UE.sizeof;
-            static assert(T.sizeof % UE.sizeof == 0);
-        }
-
-        auto window()
-        {
-            static if(UE.sizeof > T.sizeof)
-            {
-                // note, we avoid a cast of arrays because that invokes a runtime call
-                auto w = chain.window;
-                return (cast(T*)w.ptr)[offset .. w.length * Ratio];
-            }
-            else static if(UE.sizeof == T.sizeof)
-                // ok to cast array here, because it's the same size (no runtime call)
-                return cast(T[])chain.window;
-            else
-            {
-                // note, we avoid a cast of arrays because that invokes a runtime call
-                auto w = chain.window;
-                return (cast(T*)w.ptr)[0 .. w.length / Ratio];
-            }
-        }
-
-        size_t extend(size_t elements)
-        {
-            static if(UE.sizeof < T.sizeof)
-            {
-                // need a minimum number of items
-                auto win = chain.window;
-                immutable origLength = win.length / Ratio;
-                auto targetLength = win.length + Ratio - win.length % Ratio;
-                while(win.length < targetLength)
-                {
-                    if(chain.extend(elements * Ratio) == 0)
-                    {
-                        return 0;
-                    }
-                    win = chain.window;
-                }
-                return window.length - origLength;
-            }
-            else
-            {
-                // need to round up to the next UE.
-                immutable translatedElements = (elements + Ratio - 1) / Ratio;
-                return chain.extend(translatedElements) * Ratio;
-            }
-        }
-
-        void release(size_t elements)
-        {
-            static if(UE.sizeof <= T.sizeof)
-            {
-                chain.release(elements * Ratio);
-            }
-            else
-            {
-                // may need to keep one of the upstream elements because we only
-                // released part of it
-                elements += offset;
-                offset = elements % Ratio;
-                chain.release(elements / Ratio);
-            }
-        }
-
-        mixin implementValve!(chain);
-    }
-
-    return ArrayCastPipe(c);
+    return ArrayCastPipe!(Chain, T)(c);
 }
 
 unittest
@@ -434,6 +466,47 @@ unittest
     assert(p.window == "hello, world");
 }
 
+private struct BufferedInputSource(BufType, Source)
+{
+    Source dev;
+    BufType buffer;
+    size_t released;
+    size_t valid;
+    auto window() { return buffer.window[released .. valid]; }
+    void release(size_t elements)
+    {
+        assert(released + elements <= valid);
+        released += elements;
+    }
+
+    size_t extend(size_t elements)
+    {
+        if(elements == 0)
+        {
+            // use optimal read size
+            elements = 1024 * 8; // TODO: figure out this size
+        }
+
+        if(buffer.window.length - valid < elements)
+        {
+            if(buffer.extendAndFlush(released, valid, elements) == 0)
+            {
+                // extend without allocating
+                auto newBytes = buffer.window.length - (valid - released);
+                if(!newBytes)
+                    // cannot extend.
+                    return 0;
+                buffer.extendAndFlush(released, valid, newBytes);
+            }
+            valid -= released;
+            released = 0;
+        }
+        auto nread = dev.read(buffer.window[valid..$]);
+        valid += nread;
+        return nread;
+    }
+}
+
 /**
  * A buffered source ties a buffer to an input source into a pipe definition.
  *
@@ -447,53 +520,57 @@ unittest
 auto bufferedSource(BufType = ArrayBuffer!ubyte, Source)(Source dev, BufType b = BufType.init)
     if(isBuffer!(BufType) && hasMember!(Source, "read") && is(typeof(dev.read(b.window))))
 {
-    static struct BufferedInputSource
-    {
-        Source dev;
-        BufType buffer;
-        size_t released;
-        size_t valid;
-        auto window() { return buffer.window[released .. valid]; }
-        void release(size_t elements)
-        {
-            assert(released + elements <= valid);
-            released += elements;
-        }
-
-        size_t extend(size_t elements)
-        {
-            if(elements == 0)
-            {
-                // use optimal read size
-                elements = 1024 * 8; // TODO: figure out this size
-            }
-
-            if(buffer.window.length - valid < elements)
-            {
-                if(buffer.extendAndFlush(released, valid, elements) == 0)
-                {
-                    // extend without allocating
-                    auto newBytes = buffer.window.length - (valid - released);
-                    if(!newBytes)
-                        // cannot extend.
-                        return 0;
-                    buffer.extendAndFlush(released, valid, newBytes);
-                }
-                valid -= released;
-                released = 0;
-            }
-            auto nread = dev.read(buffer.window[valid..$]);
-            valid += nread;
-            return nread;
-        }
-    }
-
-    return BufferedInputSource(dev, b);
+    return BufferedInputSource!(BufType, Source)(dev, b);
 }
 
 unittest
 {
     // TODO: fill me out
+}
+
+private struct OutputPipe(Chain, Sink)
+{
+    Sink dev;
+    Chain chain;
+
+    auto window()
+    {
+        return chain.window();
+    }
+
+    size_t extend(size_t elements)
+    {
+        // get new elements, and then write them to the file
+        auto newData = chain.extend(elements);
+        ensureWritten(newData);
+        return newData;
+    }
+
+    void release(size_t elements)
+    {
+        // just upstream this
+        chain.release(elements);
+    }
+
+    size_t flush()
+    {
+        // extend and then release all data
+        extend(0);
+        auto result = window.length;
+        release(window.length);
+        return result;
+    }
+
+    private void ensureWritten(size_t dataToWrite)
+    {
+        while(dataToWrite)
+        {
+            auto nwritten = dev.write(chain.window[$-dataToWrite .. $]);
+            dataToWrite -= nwritten;
+        }
+    }
+
+    mixin implementValve!(chain);
 }
 
 /**
@@ -513,52 +590,7 @@ unittest
  */
 auto outputPipe(Chain, Sink)(Chain c, Sink dev) if(isIopipe!Chain && is(typeof(dev.write(c.window))))
 {
-    static struct OutputPipe
-    {
-        Sink dev;
-        Chain chain;
-
-        auto window()
-        {
-            return chain.window();
-        }
-
-        size_t extend(size_t elements)
-        {
-            // get new elements, and then write them to the file
-            auto newData = chain.extend(elements);
-            ensureWritten(newData);
-            return newData;
-        }
-
-        void release(size_t elements)
-        {
-            // just upstream this
-            chain.release(elements);
-        }
-
-        size_t flush()
-        {
-            // extend and then release all data
-            extend(0);
-            auto result = window.length;
-            release(window.length);
-            return result;
-        }
-        
-        private void ensureWritten(size_t dataToWrite)
-        {
-            while(dataToWrite)
-            {
-                auto nwritten = dev.write(chain.window[$-dataToWrite .. $]);
-                dataToWrite -= nwritten;
-            }
-        }
-
-        mixin implementValve!(chain);
-    }
-
-    auto result = OutputPipe(dev, c);
+    auto result = OutputPipe!(Chain, Sink)(dev, c);
     result.ensureWritten(result.window.length);
     return result;
 }
@@ -575,7 +607,7 @@ unittest
  * Params: c - The iopipe to process
  * Returns: The number of elements processed.
  */
-size_t process(Chain)(Chain c)
+size_t process(Chain)(auto ref Chain c)
 {
     size_t result = 0;
     do
@@ -592,3 +624,34 @@ unittest
 {
     // TODO: fill me out
 }
+
+private struct IoPipeRange(size_t extendRequestSize, Chain)
+{
+        Chain chain;
+        bool empty() { return chain.window.length == 0; }
+        auto front() { return chain.window; }
+        void popFront()
+        {
+            chain.release(chain.window.length);
+            chain.extend(extendRequestSize);
+        }
+}
+
+/**
+ * Convert an io pipe into a range, with each popFront releasing all the
+ * current data and extending a specified amount.
+ *
+ * Note that the function may call extend once before returning, depending on
+ * whether there is any data present or not.
+ *
+ * Params: extendRequestSize - The value to pass to c.extend when calling popFront
+ *         c - The chain to use as backing for this range.
+ */
+auto asInputRange(size_t extendRequestSize = 0, Chain)(Chain c) if(isIopipe!Chain)
+{
+    if(c.window.length == 0)
+        // attempt to prime the range, since empty will be true right away!
+        c.extend(extendRequestSize);
+    return IoPipeRange!(extendRequestSize, Chain)(c);
+}
+

@@ -4,7 +4,7 @@ import iopipe.stream;
 import iopipe.buffer;
 import std.range.primitives;
 
-void doConvert(UTFType oEnc, Input)(Input input)
+void doConvert(UTFType oEnc, Input)(Input _input)
 {
     import iopipe.valve;
     auto outputDev = new IODevice(1); // stdout
@@ -15,6 +15,7 @@ void doConvert(UTFType oEnc, Input)(Input input)
         .outputPipe(outputDev)
         .autoValve // drive from the valve
         .textOutput;
+    auto input = _input.ensureDecodeable;
     if(input.window.length > 0 && input.window.front != 0xfeff)
     {
         // write a BOM if not present
