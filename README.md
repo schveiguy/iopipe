@@ -14,7 +14,7 @@ In a unix shell, one "pipes" a command to another command using the pipe charact
 Such a command pipes the output of the `find` command to the input of the `grep` command
 
 In D, a very elegant set of constructs, called ranges, can use this same type of mechanism
-to "wrap" one range with other ranges in order to build one range out of another, very similarly to
+to "wrap" one range with other ranges, similarly to
 building a pipeline of i/o with the unix shell.
 
 ```D
