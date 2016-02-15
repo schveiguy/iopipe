@@ -518,14 +518,34 @@ private struct BufferedInputSource(BufType, Source)
  * Returns: An iopipe that uses the given buffer to read data from the given device source.
  */
 auto bufferedSource(BufType = ArrayBuffer!ubyte, Source)(Source dev, BufType b = BufType.init)
-    if(isBuffer!(BufType) && hasMember!(Source, "read") && is(typeof(dev.read(b.window))))
+    if(isBuffer!(BufType) && hasMember!(Source, "read") && is(typeof(dev.read(b.window)) == size_t))
 {
     return BufferedInputSource!(BufType, Source)(dev, b);
 }
 
 unittest
 {
-    // TODO: fill me out
+    // simple struct that "reads" data from a pre-defined string array into a char buffer.
+    static struct ArrayReader
+    {
+        string _src;
+        size_t read(char[] data)
+        {
+            auto ntoread = data.length;
+            if(ntoread > _src.length)
+                ntoread = _src.length;
+            data[0 .. ntoread] = _src[0 .. ntoread];
+            _src = _src[ntoread .. $];
+            return ntoread;
+        }
+    }
+
+    auto b = ArrayReader("hello, world!").bufferedSource!(ArrayBuffer!char);
+
+    assert(b.window.length == 0);
+    assert(b.extend(0) == 13);
+    assert(b.window == "hello, world!");
+    assert(b.extend(0) == 0);
 }
 
 private struct OutputPipe(Chain, Sink)
@@ -552,10 +572,10 @@ private struct OutputPipe(Chain, Sink)
         chain.release(elements);
     }
 
-    size_t flush()
+    size_t flush(size_t elements)
     {
         // extend and then release all data
-        extend(0);
+        extend(elements);
         auto result = window.length;
         release(window.length);
         return result;
@@ -580,7 +600,7 @@ private struct OutputPipe(Chain, Sink)
  * The returned iopipe has a function "flush" that will extend a chunk of data
  * and then release it immediately.
  *
- * Params: c - The input data to the stream.
+ * Params: c - The input data to write to the stream.
  *         dev - The output stream to write data to. This must have a function
  *               `write` that can write a c.window.
  *
@@ -588,7 +608,7 @@ private struct OutputPipe(Chain, Sink)
  *          don't have to do anything with the data.
  *
  */
-auto outputPipe(Chain, Sink)(Chain c, Sink dev) if(isIopipe!Chain && is(typeof(dev.write(c.window))))
+auto outputPipe(Chain, Sink)(Chain c, Sink dev) if(isIopipe!Chain && is(typeof(dev.write(c.window)) == size_t))
 {
     auto result = OutputPipe!(Chain, Sink)(dev, c);
     result.ensureWritten(result.window.length);
@@ -597,7 +617,23 @@ auto outputPipe(Chain, Sink)(Chain c, Sink dev) if(isIopipe!Chain && is(typeof(d
 
 unittest
 {
-    // TODO: fill me out
+    // shim that simply verifies the data is correct
+    static struct OutputStream
+    {
+        string verifyAgainst;
+        size_t write(const(char)[] data)
+        {
+            assert(data.length <= verifyAgainst.length && data == verifyAgainst[0 .. data.length], verifyAgainst ~ " != " ~ data);
+            verifyAgainst = verifyAgainst[data.length .. $];
+            return data.length;
+        }
+    }
+
+    auto pipe = "hello, world!".SimplePipe!(string, 5).outputPipe(OutputStream("hello, world!"));
+    do
+    {
+        pipe.release(pipe.window.length);
+    } while(pipe.extend(0) != 0);
 }
 
 /**
@@ -622,7 +658,7 @@ size_t process(Chain)(auto ref Chain c)
 
 unittest
 {
-    // TODO: fill me out
+    assert("hello, world!".SimplePipe!(string, 5).process() == 13);
 }
 
 private struct IoPipeRange(size_t extendRequestSize, Chain)
@@ -647,7 +683,7 @@ private struct IoPipeRange(size_t extendRequestSize, Chain)
  * Params: extendRequestSize - The value to pass to c.extend when calling popFront
  *         c - The chain to use as backing for this range.
  */
-auto asInputRange(size_t extendRequestSize = 0, Chain)(Chain c) if(isIopipe!Chain)
+auto asInputRange(size_t extendRequestSize = 0, Chain)(Chain c)// if(isIopipe!Chain)
 {
     if(c.window.length == 0)
         // attempt to prime the range, since empty will be true right away!
@@ -655,3 +691,13 @@ auto asInputRange(size_t extendRequestSize = 0, Chain)(Chain c) if(isIopipe!Chai
     return IoPipeRange!(extendRequestSize, Chain)(c);
 }
 
+unittest
+{
+    auto str = "abcdefghijklmnopqrstuvwxyz";
+    foreach(elem; str.SimplePipe!(string, 5).asInputRange)
+    {
+        assert(elem == str[0 .. elem.length]);
+        str = str[elem.length .. $];
+    }
+    assert(str.length == 0);
+}
