@@ -15,3 +15,15 @@ subPackage {
    sourcePaths "examples/convert"
    dependency "iopipe" version="*"
 }
+subPackage {
+   name "unzip"
+   targetType "executable"
+   sourcePaths "examples/unzip"
+   dependency "iopipe" version="*"
+}
+subPackage {
+   name "zip"
+   targetType "executable"
+   sourcePaths "examples/zip"
+   dependency "iopipe" version="*"
+}
