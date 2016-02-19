@@ -15,7 +15,7 @@ void doConvert(UTFType oEnc, Input)(Input input)
         .outputPipe(outputDev)
         .autoValve // drive from the valve
         .textOutput;
-    if(!input.window.empty > 0 && input.window.front != 0xfeff)
+    if(!input.window.empty && input.window.front != 0xfeff)
     {
         // write a BOM if not present
         put(oChain, dchar(0xfeff));
