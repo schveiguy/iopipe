@@ -9,7 +9,7 @@ void doConvert(UTFType oEnc, Input)(Input input)
     import iopipe.valve;
     auto outputDev = new IODevice(1); // stdout
     auto oChain = NullDevice.init
-        .bufferedSource(ArrayBuffer!(CodeUnit!oEnc)())
+        .bufferedSource!(CodeUnit!oEnc)
         .valved
         .encodeText!(oEnc)
         .outputPipe(outputDev)

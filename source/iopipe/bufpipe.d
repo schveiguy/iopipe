@@ -466,43 +466,43 @@ unittest
     assert(p.window == "hello, world");
 }
 
-private struct BufferedInputSource(BufType, Source)
+private struct BufferedInputSource(T, Allocator, Source)
 {
     Source dev;
-    BufType buffer;
-    size_t released;
-    size_t valid;
-    auto window() { return buffer.window[released .. valid]; }
+    BufferManager!(T, Allocator) buffer;
+    auto window()
+    {
+        return buffer.window;
+    }
+
     void release(size_t elements)
     {
-        assert(released + elements <= valid);
-        released += elements;
+        buffer.releaseFront(elements);
     }
 
     size_t extend(size_t elements)
     {
-        if(elements == 0)
+        import std.algorithm.comparison : max;
+        enum optimalReadSize = 1024 * 8; // TODO: figure out this size
+        if(elements == 0 || (elements < optimalReadSize && buffer.capacity == 0))
         {
             // use optimal read size
-            elements = 1024 * 8; // TODO: figure out this size
+            elements = optimalReadSize;
         }
 
-        if(buffer.window.length - valid < elements)
+        // ensure we maximize buffer use.
+        elements = max(elements, buffer.avail());
+
+        auto oldLen = buffer.window.length;
+        if(buffer.extend(elements) == 0)
         {
-            if(buffer.extendAndFlush(released, valid, elements) == 0)
-            {
-                // extend without allocating
-                auto newBytes = buffer.window.length - (valid - released);
-                if(!newBytes)
-                    // cannot extend.
-                    return 0;
-                buffer.extendAndFlush(released, valid, newBytes);
-            }
-            valid -= released;
-            released = 0;
+            // could not extend;
+            return 0;
         }
-        auto nread = dev.read(buffer.window[valid..$]);
-        valid += nread;
+
+        auto nread = dev.read(buffer.window[oldLen .. $]);
+        // give back data we did not read.
+        buffer.releaseBack(buffer.window.length - oldLen - nread);
         return nread;
     }
 }
@@ -517,10 +517,10 @@ private struct BufferedInputSource(BufType, Source)
  *
  * Returns: An iopipe that uses the given buffer to read data from the given device source.
  */
-auto bufferedSource(BufType = ArrayBuffer!ubyte, Source)(Source dev, BufType b = BufType.init)
-    if(isBuffer!(BufType) && hasMember!(Source, "read") && is(typeof(dev.read(b.window)) == size_t))
+auto bufferedSource(T=ubyte, Allocator = GCNoPointerAllocator, Source)(Source dev)
+    if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
 {
-    return BufferedInputSource!(BufType, Source)(dev, b);
+    return BufferedInputSource!(T, Allocator, Source)(dev);
 }
 
 unittest
@@ -540,7 +540,7 @@ unittest
         }
     }
 
-    auto b = ArrayReader("hello, world!").bufferedSource!(ArrayBuffer!char);
+    auto b = ArrayReader("hello, world!").bufferedSource!(char);
 
     assert(b.window.length == 0);
     assert(b.extend(0) == 13);

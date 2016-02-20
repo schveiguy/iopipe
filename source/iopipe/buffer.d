@@ -6,142 +6,156 @@ Authors:   Steven Schveighoffer, Dmitry Olshansky
  */
 module iopipe.buffer;
 import std.experimental.allocator : IAllocator;
+import std.experimental.allocator.common : platformAlignment;
+
+struct GCNoPointerAllocator
+{
+    enum alignment = platformAlignment;
+
+    /// Allocate some data
+    void[] allocate(size_t size) pure nothrow
+    {
+        import core.memory : GC;
+        auto blkinfo = GC.qalloc(size, GC.BlkAttr.NO_SCAN);
+        return blkinfo.base[0 .. blkinfo.size];
+    }
+
+    /// Expand some data
+    bool expand(ref void[] original, size_t size) pure nothrow
+    {
+        import core.memory : GC;
+        if(!original.ptr)
+        {
+            original = allocate(size);
+            return original.ptr != null;
+        }
+
+        auto nBytes = GC.extend(original.ptr, size, size);
+        if(nBytes == 0)
+            return false;
+        original = original.ptr[0 .. nBytes];
+        return true;
+    }
+}
 
 /**
  * Array-based buffer
  *
  * Based on concept by Dmitry Olshansky
  */
-struct ArrayBuffer(T)
-{
-    // get the valid data in the buffer
-    @property auto window(){
-        return buffer;
-    }
-
-    /**
-     * toDiscard - number of bytes at the beginning of the buffer that aren't valid
-     * valid - number of elements that are valid in the buffer (starting at 0)
-     * buffer[toDiscard..valid] are valid data bytes
-     * minElements - minimum number of *extra* elements requested besides the
-     * valid data that should be made available.
-     */
-    size_t extendAndFlush(size_t toDiscard, size_t valid, size_t minElements)
-    {
-        import std.array : uninitializedArray;
-        import std.algorithm.mutation : copy;
-        import std.algorithm.comparison : max;
-        size_t start = void;
-        size_t end = void;
-        if(toDiscard >= valid)
-        {
-            start = end = valid = 0;
-        }
-        else
-        {
-            start = toDiscard;
-            end = valid;
-            valid -= toDiscard;
-        }
-        // check number of bytes we can extend without reallocating
-        if(buffer.length - valid >= minElements)
-        {
-            // can just move data
-            if(valid > 0)
-                copy(buffer[start..end], buffer[0..valid]);
-        }
-        else
-        {
-            auto oldLen = buffer.length;
-            if(oldLen == 0)
-                oldLen = INITIAL_LENGTH; // need to start somewhere.
-            auto newLen = max(valid + minElements, oldLen * 14 / 10);
-            auto newbuf = uninitializedArray!(T[])(newLen);
-            if (valid > 0) {
-                copy(buffer[start .. end], newbuf[0 .. valid]);
-            }
-            buffer = newbuf;
-        }
-        
-        return buffer.length - valid;
-    }
-
-private:
-    T[] buffer;
-    enum size_t INITIAL_LENGTH = 128;
-}
-
-/**
- * Same as array buffer, but uses a custom allocator.
- *
- * Note that this will likely be worse performing for GCAllocator since it has
- * no concept of disabling scanning (as most ubyte buffers would).
- */
-struct AllocatorBuffer(T, Allocator = IAllocator)
+struct BufferManager(T, Allocator = GCNoPointerAllocator)
 {
     this(Allocator allocator) {
         theAllocator = allocator;
     }
 
-    // get the valid data in the buffer
-    @property auto window(){
-        return buffer;
+    // give bytes back to the buffer manager at the front
+    void releaseFront(size_t elements)
+    {
+        assert(released + elements <= valid);
+        released += elements;
     }
 
-    /**
-     * Extend the existing buffer a certain number of bytes, while flushing data
-     * toDiscard - number of bytes at the beginning of the buffer that aren't valid
-     * valid - number of elements that are valid in the buffer (starting at 0)
-     * buffer[toDiscard..valid] are valid data bytes
-     * minElements - minimum number of *extra* elements requested besides the
-     * valid data that should be made available.
-     */
-    size_t extendAndFlush(size_t toDiscard, size_t valid, size_t minElements)
+    // give bytes back to the buffer manager at the back.
+    void releaseBack(size_t elements)
+    {
+        assert(released + elements <= valid);
+        valid -= elements;
+    }
+
+    // get the current window of data
+    T[] window()
+    {
+        return buffer.ptr[released .. valid];
+    }
+
+    // get the number of available elements that could be extended without reallocating.
+    size_t avail()
+    {
+        return buffer.length - (valid - released);
+    }
+
+    size_t capacity()
+    {
+        return buffer.length;
+    }
+
+    size_t extend(size_t request)
     {
         import std.algorithm.mutation : copy;
         import std.algorithm.comparison : max;
         import std.traits : hasMember;
-        size_t start = void;
-        size_t end = void;
-        if(toDiscard >= valid)
+        if(buffer.length - valid >= request)
         {
-            start = end = valid = 0;
+            valid += request;
+            return request;
         }
-        else
-        {
-            start = toDiscard;
-            end = valid;
-            valid -= toDiscard;
-        }
-        // check number of bytes we can extend without reallocating
-        if(buffer.length - valid >= minElements)
-        {
-            // can just move data
-            if(valid > 0)
-                copy(buffer[start..end], buffer[0..valid]);
-        }
-        else
-        {
-            auto oldLen = buffer.length;
-            // grow by at least 1.4
-            auto newLen = max(valid + minElements, oldLen * 14 / 10);
-            static if(hasMember!(Allocator, "goodAllocSize"))
-                newLen = theAllocator.goodAllocSize(newLen * T.sizeof) / T.sizeof;
-            auto newbuf = cast(T[])theAllocator.allocate(newLen * T.sizeof);
-            if (valid > 0) {
-                // n + pageMask -> at least 1 page, no less then n
-                copy(buffer[start .. end], newbuf[0 .. valid]);
-            }
-            // TODO: should we do this? using a GC allocator this is unsafe.
-            static if(hasMember!(Allocator, "deallocate"))
-                theAllocator.deallocate(buffer);
-            buffer = newbuf;
-        }
-        
-        return buffer.length - valid;
-    }
 
+        auto validElems = valid - released;
+        if(validElems + request <= buffer.length)
+        {
+            // can just move the data
+            copy(buffer[released .. valid], buffer[0 .. validElems]);
+            released = 0;
+            valid = validElems + request;
+            return request;
+        }
+
+        // otherwise, we must allocate/extend a new buffer
+
+        static if(hasMember!(Allocator, "expand"))
+        {
+            // try expanding, no further copying required
+            if(buffer.ptr)
+            {
+                void[] buftmp = cast(void[])buffer;
+                if(theAllocator.expand(buftmp, (request - (buffer.length - valid)) * T.sizeof))
+                {
+                    buffer = cast(T[])buftmp;
+                    if(validElems == 0)
+                    {
+                        valid = request;
+                        released = 0;
+                    }
+                    else
+                    {
+                        valid += request;
+                    }
+                    return request;
+                }
+            }
+        }
+
+        // copy and allocate a new buffer
+        auto oldLen = buffer.length;
+        if(oldLen == 0)
+            // need to start somewhere
+            oldLen = INITIAL_LENGTH;
+        // grow by at least 1.4
+        auto newLen = max(validElems + request, oldLen * 14 / 10);
+        static if(hasMember!(Allocator, "goodAllocSize"))
+            newLen = theAllocator.goodAllocSize(newLen * T.sizeof) / T.sizeof;
+        auto newbuf = cast(T[])theAllocator.allocate(newLen * T.sizeof);
+        if(!newbuf.ptr)
+            return 0;
+        if (validElems > 0) {
+            // n + pageMask -> at least 1 page, no less then n
+            copy(buffer[released .. valid], newbuf[0 .. validElems]);
+        }
+        valid = validElems + request;
+        released = 0;
+
+        // TODO: should we do this? using a GC allocator this is unsafe.
+        static if(hasMember!(Allocator, "deallocate"))
+            theAllocator.deallocate(buffer);
+        buffer = newbuf;
+
+        return request;
+    }
 private:
     Allocator theAllocator;
+    enum size_t INITIAL_LENGTH = 128;
     T[] buffer;
+    size_t valid;
+    size_t released;
 }
