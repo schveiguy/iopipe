@@ -8,34 +8,46 @@ module iopipe.buffer;
 import std.experimental.allocator : IAllocator;
 import std.experimental.allocator.common : platformAlignment;
 
+/**
+ * GC allocator that creates blocks of non-pointer data (unscanned). This also
+ * does not support freeing data, relying on the GC to do so.
+ */
 struct GCNoPointerAllocator
 {
-    enum alignment = platformAlignment;
+    import std.experimental.allocator.gc_allocator : GCAllocator;
+    enum alignment = GCAllocator.alignment;
 
     /// Allocate some data
-    void[] allocate(size_t size) pure nothrow
+    void[] allocate(size_t size) shared
     {
         import core.memory : GC;
-        auto blkinfo = GC.qalloc(size, GC.BlkAttr.NO_SCAN);
-        return blkinfo.base[0 .. blkinfo.size];
+        return GC.malloc(size, GC.BlkAttr.NO_SCAN)[0 .. size];
+    }
+
+    size_t goodAllocSize(size_t size) shared
+    {
+        // mimic GCAllocator
+        return GCAllocator.instance.goodAllocSize(size);
     }
 
     /// Expand some data
-    bool expand(ref void[] original, size_t size) pure nothrow
+    bool expand(ref void[] original, size_t size) shared
     {
-        import core.memory : GC;
-        if(!original.ptr)
-        {
-            original = allocate(size);
-            return original.ptr != null;
-        }
-
-        auto nBytes = GC.extend(original.ptr, size, size);
-        if(nBytes == 0)
-            return false;
-        original = original.ptr[0 .. nBytes];
-        return true;
+        // mimic GCAllocator
+        return GCAllocator.instance.expand(original, size);
     }
+
+    /// The shared instance of GCNoPointerAllocator
+    static shared GCNoPointerAllocator instance;
+}
+
+unittest
+{
+    import core.memory: GC;
+    auto arr = GCNoPointerAllocator.instance.allocate(100);
+    assert((GC.getAttr(arr.ptr) & GC.BlkAttr.NO_SCAN) != 0);
+
+    // not much reason to test of it, as it's just a wrapper for GCAllocator.
 }
 
 /**
@@ -43,43 +55,75 @@ struct GCNoPointerAllocator
  *
  * Based on concept by Dmitry Olshansky
  */
-struct BufferManager(T, Allocator = GCNoPointerAllocator)
+struct BufferManager(T, Allocator = shared(GCNoPointerAllocator))
 {
+    /**
+     * Construct a buffer manager with a given allocator.
+     */
     this(Allocator allocator) {
         theAllocator = allocator;
     }
 
-    // give bytes back to the buffer manager at the front
+    /**
+     * Give bytes back to the buffer manager from the front of the buffer.
+     * These bytes can be removed in this operation or further operations and
+     * should no longer be used.
+     *
+     * Params: elements - number of elements to release.
+     */
     void releaseFront(size_t elements)
     {
         assert(released + elements <= valid);
         released += elements;
     }
 
-    // give bytes back to the buffer manager at the back.
+    /**
+     * Give bytes back to the buffer manager from the back of the buffer.
+     * These bytes can be removed in this operation or further operations and
+     * should no longer be used.
+     *
+     * Params: elements - number of elements to release.
+     */
     void releaseBack(size_t elements)
     {
         assert(released + elements <= valid);
         valid -= elements;
     }
 
-    // get the current window of data
+    /**
+     * The window of currently valid data
+     */
     T[] window()
     {
         return buffer.ptr[released .. valid];
     }
 
-    // get the number of available elements that could be extended without reallocating.
+    /**
+     * Accessor for the number of unused elements that can be extended without
+     * needing to fetch more data from the allocator.
+     */
     size_t avail()
     {
         return buffer.length - (valid - released);
     }
 
+    /**
+     * Accessor for the total number of elements currently managed.
+     */
     size_t capacity()
     {
         return buffer.length;
     }
 
+    /**
+     * Add more data to the window of currently valid data. To avoid expensive
+     * reallocation, use avail to tune this call.
+     *
+     * Params: request - The number of additional elements to add to the valid window.
+     * Returns: The number of elements that were actually added to the valid
+     * window. Note that this may be less than the request if more elements
+     * could not be attained from the allocator.
+     */
     size_t extend(size_t request)
     {
         import std.algorithm.mutation : copy;
@@ -158,4 +202,9 @@ private:
     T[] buffer;
     size_t valid;
     size_t released;
+}
+
+unittest
+{
+    // TODO: we need to mock/construct an allocator to force the behaviors here.
 }

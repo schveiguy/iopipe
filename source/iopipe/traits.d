@@ -63,8 +63,39 @@ template isIopipe(T)
         }));
 }
 
+unittest
+{
+    import std.meta: AliasSeq;
+    import std.traits: isNarrowString;
+    static struct S1(T)
+    {
+        T[] window;
+        size_t extend(size_t elements) { return 0; }
+        void release(size_t elements) {}
+    }
+
+    // test struct with random access range instead of array
+    import std.range: chain;
+    static struct S2(T)
+    {
+        T[] arr1;
+        T[] arr2;
+        auto window() { return chain(arr1, arr2); }
+        size_t extend(size_t elements) { return 0; }
+        void release(size_t elements) {}
+    }
+
+    foreach(type; AliasSeq!(char, wchar, dchar, ubyte, byte, ushort, short, uint, int))
+    {
+        static assert(isIopipe!(S1!type), "S1!" ~ type.stringof);
+        static if(!isNarrowString!(type[]))
+            static assert(isIopipe!(S2!type), "S2!" ~ type.stringof);
+    }
+}
+
 /**
- * Determine the type of the window of the given pipe type.
+ * Determine the type of the window of the given pipe type. This works when the
+ * window is a method or a field.
  */
 template windowType(T)
 {
@@ -74,7 +105,7 @@ template windowType(T)
         alias windowType = typeof(T.init.window);
 }
 
-// I don't know how to do this in a better way...
+// I don't know how to do this a better way...
 private template propertyType(alias x)
 {
     static if(is(typeof(x) == function))
@@ -95,9 +126,19 @@ template hasValve(T)
         enum hasValve = false;
 }
 
+unittest
+{
+    static struct S1
+    {
+        int[] valve;
+    }
+}
+
 /**
  * Boilerplate for implementing a valve. If you don't define a custom valve,
  * you should always mixin this template in all your iopipe templates.
+ *
+ * Params: pipechain - symbol that contains the upstream pipe chain.
  */
 mixin template implementValve(alias pipechain)
 {
@@ -118,22 +159,4 @@ template valveCount(T)
     {
         enum valveCount = 0;
     }
-}
-
-/**
- * Evaluates to true if the given type is a valid buffer
- */
-template isBuffer(T)
-{
-    enum isBuffer = is(typeof(()
-        {
-            import std.traits: isNarrowString;
-            import std.range.primitives: isRandomAccessRange;
-            T buf;
-            auto w = buf.window;
-            alias W = typeof(w);
-            static assert(isNarrowString!W || isRandomAccessRange!W);
-            auto x = buf.extendAndFlush(size_t.min, size_t.min, size_t.min);
-            static assert(is(typeof(x) == size_t));
-        }));
 }

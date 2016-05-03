@@ -510,14 +510,14 @@ private struct BufferedInputSource(T, Allocator, Source)
 /**
  * A buffered source ties a buffer to an input source into a pipe definition.
  *
- * Params: BufType - The type of the buffer.
+ * Params: T - The type of element to allocate with the allocator
+ *         Allocator - The allocator to use for managing the buffer
  *         Source - The type of the input stream. This must have a function `read` that can read into the buffer's window.
  *         dev - The input stream to use.
- *         b - The buffer to use
  *
  * Returns: An iopipe that uses the given buffer to read data from the given device source.
  */
-auto bufferedSource(T=ubyte, Allocator = GCNoPointerAllocator, Source)(Source dev)
+auto bufferedSource(T=ubyte, Allocator = shared(GCNoPointerAllocator), Source)(Source dev)
     if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
 {
     return BufferedInputSource!(T, Allocator, Source)(dev);

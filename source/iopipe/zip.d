@@ -113,6 +113,8 @@ private struct UnzipPipe(Allocator, Chain)
         // update the new data available
         return buffer.window.length - zstream.avail_out - oldValid;
     }
+
+    mixin implementValve!chain;
 }
 
 auto unzip(Allocator = GCNoPointerAllocator, Chain)(Chain c, CompressionFormat format = CompressionFormat.determineFromData)
@@ -244,6 +246,7 @@ private struct ZipPipe(Allocator, Chain)
         return buffer.window.length - zstream.avail_out - oldValid;
     }
 
+    mixin implementValve!chain;
 }
 
 auto zip(Allocator = GCNoPointerAllocator, Chain)(Chain c, CompressionFormat format = CompressionFormat.init)
