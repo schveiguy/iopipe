@@ -225,6 +225,7 @@ byline_outer_1:
                     {
                         if(*p++ == t)
                         {
+                            // found it
                             checked += p - w.ptr;
                             break byline_outer_1;
                         }
