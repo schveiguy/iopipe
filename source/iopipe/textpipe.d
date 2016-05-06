@@ -216,15 +216,33 @@ byline_outer_1:
             do
             {
                 auto w = chain.window;
-                while(checked < w.length)
+                immutable t = delimElems[0];
+                static if(is(isArray!(windowType!(Chain))))
                 {
-                    if(w[checked] == delimElems[0])
+                    auto p = w.ptr;
+                    auto e = p + w.length;
+                    while(p < e)
                     {
-                        // found it.
-                        ++checked;
-                        break byline_outer_1;
+                        if(*p++ == t)
+                        {
+                            checked += p - w.ptr;
+                            break byline_outer_1;
+                        }
                     }
-                    ++checked;
+                    checked += p - w.ptr;
+                }
+                else
+                {
+                    while(checked < w.length)
+                    {
+                        if(w.ptr[checked] == t)
+                        {
+                            // found it.
+                            ++checked;
+                            break byline_outer_1;
+                        }
+                        ++checked;
+                    }
                 }
             } while(chain.extend(elements) != 0);
         }
