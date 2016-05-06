@@ -217,7 +217,7 @@ byline_outer_1:
             {
                 auto w = chain.window;
                 immutable t = delimElems[0];
-                static if(is(isArray!(windowType!(Chain))))
+                static if(is(isArray!(WindowType!(Chain))))
                 {
                     auto p = w.ptr;
                     auto e = p + w.length;
@@ -291,7 +291,7 @@ byline_outer_2:
 
 auto byLine(Chain)(Chain c, dchar delim = '\n')
    if(isIopipe!Chain &&
-      is(Unqual!(ElementType!(windowType!Chain)) == dchar))
+      is(Unqual!(ElementType!(WindowType!Chain)) == dchar))
 {
     import std.traits: Unqual;
     auto r = ByLinePipe!Chain(c);

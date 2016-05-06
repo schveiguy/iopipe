@@ -410,7 +410,7 @@ private struct ArrayCastPipe(Chain, T)
  *
  * Returns: New pipe chain with new array type.
  */
-auto arrayCastPipe(T, Chain)(Chain c) if(isIopipe!(Chain) && isArray!(windowType!(Chain)))
+auto arrayCastPipe(T, Chain)(Chain c) if(isIopipe!(Chain) && isArray!(WindowType!(Chain)))
 {
     return ArrayCastPipe!(Chain, T)(c);
 }
@@ -517,7 +517,7 @@ private struct BufferedInputSource(T, Allocator, Source)
  *
  * Returns: An iopipe that uses the given buffer to read data from the given device source.
  */
-auto bufferedSource(T=ubyte, Allocator = shared(GCNoPointerAllocator), Source)(Source dev)
+auto bufferedSource(T=ubyte, Allocator = GCNoPointerAllocator, Source)(Source dev)
     if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
 {
     return BufferedInputSource!(T, Allocator, Source)(dev);

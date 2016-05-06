@@ -97,21 +97,21 @@ unittest
  * Determine the type of the window of the given pipe type. This works when the
  * window is a method or a field.
  */
-template windowType(T)
+template WindowType(T)
 {
     static if(is(typeof(T.window) == function))
-        alias windowType = typeof(T.init.window());
+        alias WindowType = typeof(T.init.window());
     else
-        alias windowType = typeof(T.init.window);
+        alias WindowType = typeof(T.init.window);
 }
 
 // I don't know how to do this a better way...
-private template propertyType(alias x)
+private template PropertyType(alias x)
 {
     static if(is(typeof(x) == function))
-        alias propertyType = typeof(x());
+        alias PropertyType = typeof(x());
     else
-        alias propertyType = typeof(x);
+        alias PropertyType = typeof(x);
 }
 
 /**
@@ -121,7 +121,7 @@ template hasValve(T)
 {
     import std.traits : hasMember;
     static if(hasMember!(T, "valve"))
-        enum hasValve = isIopipe!T && isIopipe!(propertyType!(T.init.valve));
+        enum hasValve = isIopipe!T && isIopipe!(PropertyType!(T.init.valve));
     else
         enum hasValve = false;
 }

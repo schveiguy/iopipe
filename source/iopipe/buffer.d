@@ -18,26 +18,26 @@ struct GCNoPointerAllocator
     enum alignment = GCAllocator.alignment;
 
     /// Allocate some data
-    void[] allocate(size_t size) shared
+    static void[] allocate(size_t size)
     {
         import core.memory : GC;
         return GC.malloc(size, GC.BlkAttr.NO_SCAN)[0 .. size];
     }
 
-    size_t goodAllocSize(size_t size) shared
+    static size_t goodAllocSize(size_t size)
     {
         // mimic GCAllocator
         return GCAllocator.instance.goodAllocSize(size);
     }
 
     /// Expand some data
-    bool expand(ref void[] original, size_t size) shared
+    static bool expand(ref void[] original, size_t size)
     {
         // mimic GCAllocator
         return GCAllocator.instance.expand(original, size);
     }
 
-    /// The shared instance of GCNoPointerAllocator
+    /// The shared instance
     static shared GCNoPointerAllocator instance;
 }
 
@@ -55,7 +55,7 @@ unittest
  *
  * Based on concept by Dmitry Olshansky
  */
-struct BufferManager(T, Allocator = shared(GCNoPointerAllocator))
+struct BufferManager(T, Allocator = GCNoPointerAllocator)
 {
     /**
      * Construct a buffer manager with a given allocator.

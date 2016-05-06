@@ -118,7 +118,7 @@ private struct UnzipPipe(Allocator, Chain)
 }
 
 auto unzip(Allocator = GCNoPointerAllocator, Chain)(Chain c, CompressionFormat format = CompressionFormat.determineFromData)
-    if(isIopipe!(Chain) && is(windowType!Chain == ubyte[]))
+    if(isIopipe!(Chain) && is(WindowType!Chain == ubyte[]))
 {
     if(c.window.length == 0)
         c.extend(0);
@@ -250,7 +250,7 @@ private struct ZipPipe(Allocator, Chain)
 }
 
 auto zip(Allocator = GCNoPointerAllocator, Chain)(Chain c, CompressionFormat format = CompressionFormat.init)
-    if(isIopipe!(Chain) && is(windowType!Chain == ubyte[]))
+    if(isIopipe!(Chain) && is(WindowType!Chain == ubyte[]))
 {
     return ZipPipe!(Allocator, Chain)(c, format);
 }
