@@ -42,6 +42,16 @@ unittest
     static assert(isIopipe!(ubyte[]));
     static assert(isIopipe!(string));
     static assert(isIopipe!(int[]));
+
+    // release is the only testworthy function
+    import std.range: iota;
+    import std.array: array;
+
+    auto arr = iota(100).array;
+
+    auto oldarr = arr;
+    arr.release(20);
+    assert(oldarr[20 .. $] == arr);
 }
 
 /**
@@ -88,21 +98,11 @@ unittest
     foreach(type; AliasSeq!(char, wchar, dchar, ubyte, byte, ushort, short, uint, int))
     {
         static assert(isIopipe!(S1!type), "S1!" ~ type.stringof);
+        // Phobos treats narrow strings as non-random access range of dchar, so
+        // compositions will not work with iopipe.
         static if(!isNarrowString!(type[]))
             static assert(isIopipe!(S2!type), "S2!" ~ type.stringof);
     }
-}
-
-/**
- * Determine the type of the window of the given pipe type. This works when the
- * window is a method or a field.
- */
-template WindowType(T)
-{
-    static if(is(typeof(T.window) == function))
-        alias WindowType = typeof(T.init.window());
-    else
-        alias WindowType = typeof(T.init.window);
 }
 
 // I don't know how to do this a better way...
@@ -112,6 +112,24 @@ private template PropertyType(alias x)
         alias PropertyType = typeof(x());
     else
         alias PropertyType = typeof(x);
+}
+
+/**
+ * Determine the type of the window of the given pipe type. This works when the
+ * window is a method or a field.
+ */
+template WindowType(T)
+{
+    alias WindowType = PropertyType!(T.init.window);
+}
+
+unittest
+{
+    static struct S1 { ubyte[] window; }
+    static assert(is(WindowType!S1 == ubyte[]));
+
+    static struct S2 { ubyte[] window() { return null; } }
+    static assert(is(WindowType!S2 == ubyte[]));
 }
 
 /**
@@ -126,14 +144,6 @@ template hasValve(T)
         enum hasValve = false;
 }
 
-unittest
-{
-    static struct S1
-    {
-        int[] valve;
-    }
-}
-
 /**
  * Boilerplate for implementing a valve. If you don't define a custom valve,
  * you should always mixin this template in all your iopipe templates.
@@ -146,6 +156,32 @@ mixin template implementValve(alias pipechain)
         ref valve() { return pipechain.valve; }
 }
 
+unittest
+{
+    static struct S1
+    {
+        int[] valve;
+        size_t extend(size_t elements) { return elements; }
+        int[] window;
+        void release(size_t elements) {}
+    }
+
+    static assert(hasValve!S1);
+
+    static struct S2(T)
+    {
+        T upstream;
+        size_t extend(size_t elements) { return elements; }
+        int[] window;
+        void release(size_t elements) {}
+
+        mixin implementValve!(upstream);
+    }
+
+    static assert(hasValve!(S2!S1));
+    static assert(!hasValve!(S2!(int[])));
+}
+
 /**
  * Determine the number of valves in the given pipeline
  */
@@ -153,10 +189,45 @@ template valveCount(T)
 {
     static if(hasValve!(T))
     {
-        enum valveCount = 1 + .valveCount!(typeof(T.init.valve));
+        enum valveCount = 1 + .valveCount!(PropertyType!(T.init.valve));
     }
     else
     {
         enum valveCount = 0;
     }
+}
+
+unittest
+{
+    static struct ValveStruct(T, bool shouldAddValve)
+    {
+        static if(shouldAddValve)
+        {
+            T valve;
+        }
+        else
+        {
+            T upstream;
+            mixin implementValve!(upstream);
+        }
+        int[] window;
+        size_t extend(size_t elements) { return elements; }
+        void release(size_t elements) {}
+
+    }
+
+    static void foo(bool shouldAddValve, int curValves, int depth, T)(T t)
+    {
+        auto p = ValveStruct!(T, shouldAddValve)();
+        enum myValves = curValves + (shouldAddValve? 1 : 0);
+        static assert(valveCount!(typeof(p)) == myValves);
+        static if(depth > 0)
+        {
+            foo!(true, myValves, depth - 1)(p);
+            foo!(false, myValves, depth - 1)(p);
+        }
+    }
+
+    foo!(true, 0, 4)((int[]).init);
+    foo!(false, 0, 4)((int[]).init);
 }
