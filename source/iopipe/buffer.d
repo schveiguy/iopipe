@@ -21,7 +21,8 @@ struct GCNoPointerAllocator
     static void[] allocate(size_t size)
     {
         import core.memory : GC;
-        return GC.malloc(size, GC.BlkAttr.NO_SCAN)[0 .. size];
+        auto p = GC.malloc(size, GC.BlkAttr.NO_SCAN);
+        return p ? p[0 .. size] : null;
     }
 
     static size_t goodAllocSize(size_t size)
@@ -51,7 +52,7 @@ unittest
 }
 
 /**
- * Array-based buffer
+ * Array based buffer manager. Uses custom allocator to get the data.
  *
  * Based on concept by Dmitry Olshansky
  */
@@ -172,18 +173,14 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator)
 
         // copy and allocate a new buffer
         auto oldLen = buffer.length;
-        if(oldLen == 0)
-            // need to start somewhere
-            oldLen = INITIAL_LENGTH;
         // grow by at least 1.4
-        auto newLen = max(validElems + request, oldLen * 14 / 10);
+        auto newLen = max(validElems + request, oldLen * 14 / 10, INITIAL_LENGTH);
         static if(hasMember!(Allocator, "goodAllocSize"))
             newLen = theAllocator.goodAllocSize(newLen * T.sizeof) / T.sizeof;
         auto newbuf = cast(T[])theAllocator.allocate(newLen * T.sizeof);
         if(!newbuf.ptr)
             return 0;
         if (validElems > 0) {
-            // n + pageMask -> at least 1 page, no less then n
             copy(buffer[released .. valid], newbuf[0 .. validElems]);
         }
         valid = validElems + request;
@@ -206,5 +203,43 @@ private:
 
 unittest
 {
-    // TODO: we need to mock/construct an allocator to force the behaviors here.
+    static struct OOMAllocator
+    {
+        void[] remaining;
+        enum alignment = 1;
+        void[] allocate(size_t bytes)
+        {
+            if(remaining.length >= bytes)
+            {
+                scope(exit) remaining = remaining[bytes .. $];
+                return remaining[0 .. bytes];
+            }
+            return null;
+        }
+    }
+
+    auto arr = new void[128 + 200];
+    auto buf = BufferManager!(ubyte, OOMAllocator)(OOMAllocator(arr));
+    assert(buf.extend(100) == 100);
+    assert(buf.avail == 28);
+    assert(buf.capacity == 128);
+    assert(buf.window.ptr == arr.ptr);
+
+    buf.releaseFront(50);
+    assert(buf.avail == 78);
+    assert(buf.capacity == 128);
+    assert(buf.window.ptr == arr.ptr + 50);
+
+    assert(buf.extend(50) == 50);
+    assert(buf.capacity == 128);
+    assert(buf.window.ptr == arr.ptr);
+
+    assert(buf.extend(500) == 0);
+    assert(buf.capacity == 128);
+    assert(buf.window.ptr == arr.ptr);
+
+    assert(buf.extend(100) == 100);
+    assert(buf.window.ptr == arr.ptr + 128);
+    assert(buf.avail == 0);
+    assert(buf.capacity == 200);
 }
