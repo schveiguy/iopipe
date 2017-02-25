@@ -10,10 +10,10 @@ void doConvert(UTFType oEnc, Input)(Input input)
     auto outputDev = new IODevice(1); // stdout
     auto oChain = NullDevice.init
         .bufferedSource!(CodeUnit!oEnc)
-        .valved
+        .holdingValve
         .encodeText!(oEnc)
         .outputPipe(outputDev)
-        .autoValve // drive from the valve
+        .holdingLoop // drive from the valve
         .textOutput;
     if(!input.window.empty && input.window.front != 0xfeff)
     {

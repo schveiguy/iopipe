@@ -6,44 +6,157 @@ Authors:   Steven Schveighoffer
  */
 module iopipe.valve;
 import iopipe.traits;
-import std.traits : hasMember;
+import std.traits : TemplateOf;
 
-// provides a mechanism to hold data from downstream processors until ready
-auto valved(Chain)(Chain chain)
+/**
+ * Create a simple valve in an iopipe chain.
+ *
+ * This puts a transparent layer between the given chain and the next downstream iopipe to provide valve access. Calling valve on the resulting iopipe gives access to the chain argument passed in.
+ *
+ * Params: chain - The upstream iopipe chain to provide valve access to.
+ *
+ * Returns: A new iopipe chain that provides a valve access point to the parameter.
+ */
+template simpleValve(Chain) if (isIopipe!Chain)
 {
-    static struct Inlet
+    struct SimpleValve
     {
-        private
-        {
-            Chain chain;
-            size_t ready;
-            size_t downstream;
-        }
+        Chain valve;
 
         auto window()
         {
-            return chain.window[ready .. $];
+            return valve.window;
         }
 
-        // release data to the outlet
         void release(size_t elements)
         {
-            assert(ready + elements <= chain.window.length);
-            ready += elements;
+            valve.release(elements);
         }
 
         size_t extend(size_t elements)
         {
-            // get more data for inlet
-            return chain.extend(elements);
+            return valve.extend(elements);
         }
-
-        mixin implementValve!(chain);
     }
 
-    static struct Outlet
+    auto simpleValve(Chain chain)
     {
-        Inlet valve;
+        return SimpleValve(chain);
+    }
+}
+
+unittest
+{
+    import iopipe.bufpipe;
+
+    static struct MyPipe(Chain)
+    {
+        int addend;
+        Chain chain;
+        size_t extend(size_t elements)
+        {
+            auto newElems = chain.extend(elements);
+            chain.window[$-newElems .. $] += addend;
+            return newElems;
+        }
+
+        auto window() { return chain.window; }
+
+        void release(size_t elements) { chain.release(elements); }
+    }
+
+    static auto simplePipe(size_t extendElementsDefault = 1, Chain)(Chain c)
+    {
+        return SimplePipe!(Chain, extendElementsDefault)(c);
+    }
+
+    // create two pipes strung together with valve access to the mypipe instance
+    auto initialPipe = simplePipe([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    auto pipeline =  simplePipe(MyPipe!(typeof(initialPipe))(1, initialPipe).simpleValve);
+
+    assert(pipeline.window.length == 0);
+    assert(pipeline.extend(5) == 5);
+    assert(pipeline.window == [2, 3, 4, 5, 6]);
+    assert(!__traits(compiles, pipeline.addend = 2));
+    pipeline.valve.addend = 2;
+    assert(pipeline.extend(10) == 5);
+    assert(pipeline.window == [2, 3, 4, 5, 6, 8, 9, 10, 11, 12]);
+}
+
+private struct HoldingValveInlet(Chain)
+{
+    private
+    {
+        Chain chain;
+        size_t ready;
+        size_t downstream;
+    }
+
+    auto window()
+    {
+        return chain.window[ready .. $];
+    }
+
+    // release data to the outlet
+    void release(size_t elements)
+    {
+        assert(ready + elements <= chain.window.length);
+        ready += elements;
+    }
+
+    size_t extend(size_t elements)
+    {
+        // get more data for inlet
+        return chain.extend(elements);
+    }
+
+    mixin implementValve!(chain);
+}
+
+/**
+ * Create a valve that uses a holding location to pass data from the inlet to the outlet.
+ *
+ * A holding valve allows one to manually control when data is released downstream. The holding valve consists of 3 parts:
+ *  - An input buffer, controlled by an iopipe called the inlet. This gives access to the input parameter chain.
+ *  - A holding area for data that has been released by the inlet to the outlet. This is basically a FIFO queue.
+ *  - An output buffer, controlled by an iopipe called the outlet. This is the tail end of the holding valve, and provides data downstream.
+ *
+ * The inlet is a bit different than the normal iopipe, because it doesn't release data upstream, but rather downstream into the holding area.
+ *
+ * The outlet, when releasing data goes upstream with the release call, giving the data back to the buffered source.
+ *
+ * One major purpose of the holding valve is to use an autoValve to automate the downstream section, and let the user code interact directly with the inlet.
+ *
+ * For example, this creates effectively an output stream:
+ *
+ * ---------
+ * import std.format;
+ *
+ * auto stream = bufferedSource!(char).holdingValve.outputFile("out.txt").autoValve;
+ * stream.extend(100); // create a buffer of 100 characters (at least)
+ *
+ * void outputRange(const(char)[] str)
+ * {
+ *    if(stream.window.length < str.length)
+ *       stream.extend(0); // extend as needed
+ *    stream.window[0 .. str.length] = str;
+ *    stream.release(str.length);
+ * }
+ * foreach(i; 0 .. 100)
+ * {
+ *    outputRange.formatValue(i);
+ * }
+ *
+ * --------
+ *
+ * Params: chain - The upstream iopipe to which the valve controls access.
+ * Returns: A valve assembly that gives access to the outlet via the return iopipe, and access to the inlet via the valve member.
+ */
+template holdingValve(Chain) if (isIopipe!Chain)
+{
+    struct Outlet
+    {
+        HoldingValveInlet!Chain valve;
 
         auto window()
         {
@@ -68,25 +181,42 @@ auto valved(Chain)(Chain chain)
         }
     }
 
-    return Outlet(Inlet(chain));
+    auto holdingValve(Chain chain)
+    {
+        return Outlet(HoldingValveInlet!Chain(chain));
+    }
 }
 
-// combine an inlet and outlet chain so the outlet is automatically flushed
-// when needed
-auto autoValve(Outlet)(Outlet o) if( hasMember!(Outlet, "valve") )
+/**
+ * Create an auto-flushing valve loop. This is for use with a chain where the next
+ * valve is a holding valve. What this does is automatically run the outlet of
+ * the holding valve so it seamlessly flushes all data when required.
+ *
+ * Note that this will ONLY work if the first valve in the chain is a holdingValve.
+ *
+ * The valve loop provides the flush function which allows you to flush any
+ * released data through the loop without extending. This function returns the
+ * number of elements flushed.
+ *
+ * See holdingValve for a better explanation.
+ */
+template holdingLoop(Chain) if(hasValve!(Chain) && __traits(isSame, TemplateOf!(PropertyType!(Chain.init.valve)), HoldingValveInlet))
 {
-    static struct AutoValve
+    struct AutoValve
     {
-        Outlet outlet;
+        Chain outlet;
+
+        // needed for implementValve
+        private ref inlet() { return outlet.valve; }
 
         auto window()
         {
-            return outlet.valve.window;
+            return inlet.window;
         }
 
         void release(size_t elements)
         {
-            outlet.valve.release(elements);
+            inlet.release(elements);
         }
 
         size_t extend(size_t elements)
@@ -94,10 +224,10 @@ auto autoValve(Outlet)(Outlet o) if( hasMember!(Outlet, "valve") )
             // release any outstanding data that is on the outlet, this allows
             // the source buffer to reuse the data.
             flush();
-            return outlet.valve.extend(elements);
+            return inlet.extend(elements);
         }
 
-        mixin implementValve!(outlet.valve);
+        mixin implementValve!(inlet);
 
         // flush the data waiting in the outlet
         size_t flush()
@@ -109,5 +239,60 @@ auto autoValve(Outlet)(Outlet o) if( hasMember!(Outlet, "valve") )
         }
     }
 
-    return AutoValve(o);
+    auto holdingLoop(Chain chain)
+    {
+        return AutoValve(chain);
+    }
+}
+
+unittest
+{
+    char[] destBuf;
+    destBuf.reserve(100);
+
+
+    struct writer(Chain)
+    {
+        Chain upstream;
+        auto window() { return upstream.window; }
+        size_t extend(size_t elements)
+        {
+            auto newElems = upstream.extend(elements);
+            destBuf ~= upstream.window[$-newElems .. $];
+            return newElems;
+        }
+
+        void release(size_t elements) { upstream.release(elements); }
+
+        mixin implementValve!(upstream);
+    }
+
+
+    char[] sourceBuf = new char[100];
+    auto prevalve = sourceBuf.simpleValve.holdingValve;
+    auto pipeline = writer!(typeof(prevalve))(prevalve).holdingLoop;
+
+    void write(string s)
+    {
+        pipeline.window[0 .. s.length] = s;
+        pipeline.release(s.length);
+    }
+
+    assert(pipeline.window.length == 100);
+    assert(destBuf.length == 0);
+    // write some data
+    write("hello");
+    assert(pipeline.window.length == 95);
+    assert(pipeline.valve.window.length == 100);
+    assert(destBuf.length == 0);
+    assert(pipeline.flush == 5);
+    assert(destBuf == "hello");
+    assert(pipeline.valve.window.length == 95);
+    write(", world!");
+    assert(pipeline.window.length == 87);
+    assert(pipeline.valve.window.length == 95);
+    assert(destBuf == "hello");
+    assert(pipeline.extend(100) == 0); // cannot extend normal array automatically
+    assert(pipeline.valve.window.length == 87);
+    assert(destBuf == "hello, world!");
 }

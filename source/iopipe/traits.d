@@ -63,7 +63,7 @@ template isIopipe(T)
         {
             import std.range.primitives;
             import std.traits;
-            T t;
+            auto t = T.init;
             auto window = t.window;
             alias W = typeof(window);
             static assert(isNarrowString!W || isRandomAccessRange!W);
@@ -106,10 +106,11 @@ unittest
 }
 
 // I don't know how to do this a better way...
-private template PropertyType(alias x)
+template PropertyType(alias x)
 {
+    import std.traits: ReturnType;
     static if(is(typeof(x) == function))
-        alias PropertyType = typeof(x());
+        alias PropertyType = ReturnType!x;
     else
         alias PropertyType = typeof(x);
 }
@@ -152,7 +153,7 @@ template hasValve(T)
  */
 mixin template implementValve(alias pipechain)
 {
-    static if(hasValve!(typeof(pipechain)))
+    static if(hasValve!(PropertyType!(pipechain)))
         ref valve() { return pipechain.valve; }
 }
 

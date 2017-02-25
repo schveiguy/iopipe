@@ -7,9 +7,12 @@ Authors:   Steven Schveighoffer
 module iopipe.textpipe;
 import iopipe.bufpipe;
 import iopipe.traits;
-import std.range: ElementType;
-import std.traits: Unqual;
+import std.range: isRandomAccessRange, hasLength, ElementType, ElementEncodingType;
+import std.traits: Unqual, isSomeChar;
 
+/**
+ * Used to specify stream type
+ */
 enum UTFType
 {
     Unknown,
@@ -20,6 +23,11 @@ enum UTFType
     UTF32BE
 }
 
+/**
+ * Aliased to code unit type of a specified stream type.
+ *
+ * `Unknown` is specified as char (UTF8 is the default)
+ */
 template CodeUnit(UTFType u)
 {
     static if(u == UTFType.Unknown || u == UTFType.UTF8)
@@ -32,7 +40,18 @@ template CodeUnit(UTFType u)
         static assert(0);
 }
 
-UTFType detectBOM(R)(R r)
+/**
+ * Using the given random access range of bytes, determine the stream width.
+ * This does not advance the range past the BOM.
+ *
+ * Params:
+ *    r - Range in which to detect BOM. Must be a random access range with
+ *        element type of ubyte. Cannot be an infinite range.
+ *
+ * Returns:
+ *    Instance of UTFType indicating what the BOM decoding implies.
+ */
+UTFType detectBOM(R)(R r) if (isRandomAccessRange!R && hasLength!R && is(ElementType!R : const(ubyte)))
 {
     if(r.length >= 2)
     {
@@ -56,105 +75,153 @@ UTFType detectBOM(R)(R r)
     return UTFType.Unknown;
 }
 
-// ensure that part of a code point isn't at the end of the window
-auto ensureDecodeable(Chain)(Chain c)
+unittest
+{
+    with(UTFType)
+    {
+        ubyte[] BOM = [0xFE, 0XFF, 0xFE, 0, 0, 0xFE, 0xFF, 0xEF, 0xBB, 0xBF];
+        assert(BOM.detectBOM == UTF16BE);
+        assert(BOM[1 .. 4].detectBOM == UTF16LE);
+        assert(BOM[1 .. 5].detectBOM == UTF32LE);
+        assert(BOM[3 .. $].detectBOM == UTF32BE);
+        assert(BOM[7 .. $].detectBOM == UTF8);
+        assert(BOM[4 .. $].detectBOM == Unknown);
+    }
+}
+
+struct DecodeableWindow(Chain, CodeUnitType)
+{
+    Chain chain;
+    ubyte partial;
+    auto window() { return chain.window[0 .. $-partial]; }
+    void release(size_t elements) { chain.release(elements); }
+    private void determinePartial()
+    {
+        static if(is(CodeUnitType == char))
+        {
+            auto w = chain.window;
+            // ends on a multi-char sequence. Ensure it's valid.
+            // find the encoding
+ee_outer:
+            foreach(ubyte i; 1 .. 4)
+            {
+                import core.bitop : bsr;
+                import std.stdio;
+                if(w.length < i)
+                {
+                    // either no data, or invalid sequence.
+                    if(i > 1)
+                    {
+                        // TODO: throw some error?
+                        stderr.writeln("oops!");
+                    }
+                    partial = 0;
+                    break ee_outer;
+                }
+                immutable highestBit = bsr(~w[$ - i] & 0x0ff);
+                switch(highestBit)
+                {
+                case 7:
+                    // ascii character
+                    if(i > 1)
+                    {
+                        stderr.writeln("oops!");
+                    }
+                    partial = 0;
+                    break ee_outer;
+                case 6:
+                    // need to continue looking
+                    break;
+                case 3: .. case 5:
+                        // 5 -> 2 byte sequence
+                        // 4 -> 3 byte sequence
+                        // 3 -> 4 byte sequence
+                        if(i + highestBit == 7)
+                            // complete sequence, let it pass.
+                            partial = 0;
+                        else
+                            // skip these, the whole sequence isn't there yet.
+                            partial = i;
+                        break ee_outer;
+                default:
+                        // invalid sequence, let it fail
+                        // TODO: throw some error?
+                        stderr.writeln("oops!");
+                        partial = 0;
+                        break ee_outer;
+                }
+            }
+        }
+        else // wchar
+        {
+            // if the last character is in 0xD800 - 0xDBFF, then it is
+            // the first wchar of a surrogate pair. This means we must
+            // leave it off the end.
+            partial = chain.window.length > 0 && (chain.window[$-1] & 0xFC00) == 0xD800 ? 1 : 0;
+        }
+    }
+    size_t extend(size_t elements)
+    {
+        auto origWindowSize = window.length;
+        cast(void)chain.extend(elements > partial ? elements - partial : elements);
+        determinePartial();
+        // TODO: may need to loop if we are getting one char at a time.
+        return window.length - origWindowSize;
+    }
+
+    mixin implementValve!chain;
+}
+
+/**
+ * Wraps a text-based iopipe to make sure all code units are decodeable.
+ *
+ * When an iopipe is made up of character types, in some cases a slice of the
+ * window may not be completely decodeable. For example, a wchar iopipe may
+ * have only one half of a surrogate pair at the end of the window.
+ *
+ * This function generates an iopipe that only allows completely decodeable
+ * sequences to be released to the next iopipe.
+ *
+ * Params:
+ *    Chain c - The iopipe whose element type is one of char, wchar, or dchar.
+ * 
+ * Returns:
+ *    An appropriate iopipe that ensures decodeability. Not that dchar iopipes
+ *    are always decodeable, so the result is simply a return of the input. 
+ */
+auto ensureDecodeable(Chain)(Chain c) if (isIopipe!Chain && isSomeChar!(ElementEncodingType!(WindowType!Chain)))
 {
     import std.traits: Unqual;
-    alias CodeUnitType = Unqual!(typeof(c.window[0]));
+    alias CodeUnitType = Unqual!(ElementEncodingType!(WindowType!Chain));
+    // need to stop chaining if the last thing was an ensureDecodable. Of course, it's very
+    // hard to check if the type is a DecodeableWindow. What we do is pretend to wrap c's upstream
+    // chain, and see if it results in the exact type we were passed. If this is the case, then
+    // it must be a type that 
     static if(is(CodeUnitType == dchar))
     {
         // always decodeable
         return c;
     }
+    else static if(__traits(hasMember, Chain, "chain") &&
+                   is(typeof(.ensureDecodeable(c.chain)) == Chain))
+    {
+        return c;
+    }
     else
     {
-        static struct DecodeableWindow
-        {
-            Chain chain;
-            ubyte partial;
-            auto window() { return chain.window[0 .. $-partial]; }
-            void release(size_t elements) { chain.release(elements); }
-            private void determinePartial()
-            {
-                static if(is(CodeUnitType == char))
-                {
-                    auto w = chain.window;
-                    // ends on a multi-char sequence. Ensure it's valid.
-                    // find the encoding
-ee_outer:
-                    foreach(ubyte i; 1 .. 4)
-                    {
-                        import core.bitop : bsr;
-                        import std.stdio;
-                        if(w.length < i)
-                        {
-                            // either no data, or invalid sequence.
-                            if(i > 1)
-                            {
-                                // TODO: throw some error?
-                                stderr.writeln("oops!");
-                            }
-                            partial = 0;
-                            break ee_outer;
-                        }
-                        immutable highestBit = bsr(~w[$ - i] & 0x0ff);
-                        switch(highestBit)
-                        {
-                        case 7:
-                            // ascii character
-                            if(i > 1)
-                            {
-                                stderr.writeln("oops!");
-                            }
-                            partial = 0;
-                            break ee_outer;
-                        case 6:
-                            // need to continue looking
-                            break;
-                        case 3: .. case 5:
-                            // 5 -> 2 byte sequence
-                            // 4 -> 3 byte sequence
-                            // 3 -> 4 byte sequence
-                            if(i + highestBit == 7)
-                                // complete sequence, let it pass.
-                                partial = 0;
-                            else
-                                // skip these, the whole sequence isn't there yet.
-                                partial = i;
-                            break ee_outer;
-                        default:
-                            // invalid sequence, let it fail
-                            // TODO: throw some error?
-                            stderr.writeln("oops!");
-                            partial = 0;
-                            break ee_outer;
-                        }
-                    }
-                }
-                else // wchar
-                {
-                    // if the last character is in 0xD800 - 0xDBFF, then it is
-                    // the first wchar of a surrogate pair. This means we must
-                    // leave it off the end.
-                    partial = (chain.window[$-1] & 0xFC00) == 0xD800 ? 1 : 0;
-                }
-            }
-            size_t extend(size_t elements)
-            {
-                auto origWindowSize = window.length;
-                chain.extend(elements > partial ? elements - partial : elements);
-                determinePartial();
-                // TODO: may need to loop if we are getting one char at a time.
-                return window.length - origWindowSize;
-            }
-
-            mixin implementValve!chain;
-        }
-
-        auto r = DecodeableWindow(c);
+        auto r = DecodeableWindow!(Chain, CodeUnitType)(c);
         r.determinePartial();
         return r;
     }
+}
+
+unittest
+{
+    // check that ensureDecodeable just returns itself when called twice
+    auto str = "hello";
+    auto d1 = str.ensureDecodeable;
+    auto d2 = d1.ensureDecodeable;
+    static assert(is(typeof(d1) == typeof(d2)));
 }
 
 // call this after detecting the byte order/width
