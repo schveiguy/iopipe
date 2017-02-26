@@ -8,7 +8,7 @@ module iopipe.textpipe;
 import iopipe.bufpipe;
 import iopipe.traits;
 import std.range: isRandomAccessRange, hasLength, ElementType, ElementEncodingType;
-import std.traits: Unqual, isSomeChar;
+import std.traits: Unqual, isSomeChar, isArray;
 
 /**
  * Used to specify stream type
@@ -275,7 +275,7 @@ private struct ByLinePipe(Chain)
 
     size_t extend(size_t elements = 0)
     {
-        auto prevChecked = checked;
+        auto newChecked = checked;
         if(validDelimElems == 1)
         {
             // simple scan per element
@@ -284,32 +284,32 @@ byline_outer_1:
             {
                 auto w = chain.window;
                 immutable t = delimElems[0];
-                static if(is(isArray!(WindowType!(Chain))))
+                static if(isArray!(WindowType!(Chain)))
                 {
-                    auto p = w.ptr;
+                    auto p = w.ptr + newChecked;
                     auto e = p + w.length;
                     while(p < e)
                     {
                         if(*p++ == t)
                         {
                             // found it
-                            checked += p - w.ptr;
+                            newChecked = p - w.ptr;
                             break byline_outer_1;
                         }
                     }
-                    checked += p - w.ptr;
+                    newChecked = p - w.ptr;
                 }
                 else
                 {
-                    while(checked < w.length)
+                    while(newChecked < w.length)
                     {
-                        if(w.ptr[checked] == t)
+                        if(w[newChecked] == t)
                         {
                             // found it.
-                            ++checked;
+                            ++newChecked;
                             break byline_outer_1;
                         }
-                        ++checked;
+                        ++newChecked;
                     }
                 }
             } while(chain.extend(elements) != 0);
@@ -321,35 +321,39 @@ byline_outer_2:
             while(true)
             {
                 auto w = chain.window;
-                while(checked + validDelimElems <= w.length)
+                while(newChecked + validDelimElems <= w.length)
                 {
                     size_t i = 0;
                     auto ptr = delimElems.ptr;
                     while(i < validDelimElems)
                     {
-                        if(w[checked + i] != *ptr++)
+                        if(w[newChecked + i] != *ptr++)
                         {
-                            checked += i < skippableElems ? i + 1 : skippableElems;
+                            newChecked += i < skippableElems ? i + 1 : skippableElems;
                             continue byline_outer_2;
                         }
                         ++i;
                     }
                     // found it
-                    checked += validDelimElems;
+                    newChecked += validDelimElems;
                     break byline_outer_2;
                 }
 
                 // need to read more data
                 if(chain.extend(elements) == 0)
                 {
-                    checked = chain.window.length;
+                    newChecked = chain.window.length;
                     break;
                 }
             }
         }
 
-        if(checked != prevChecked)
+        auto prevChecked = checked;
+        if(checked != newChecked)
+        {
             ++_lines;
+            checked = newChecked;
+        }
         return checked - prevChecked;
     }
 
