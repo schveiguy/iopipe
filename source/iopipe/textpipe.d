@@ -287,17 +287,32 @@ byline_outer_1:
                 static if(isArray!(WindowType!(Chain)))
                 {
                     auto p = w.ptr + newChecked;
-                    auto e = p + w.length;
-                    while(p < e)
+                    static if(CodeUnitType.sizeof == 1)
                     {
-                        if(*p++ == t)
+                        // can use memchr
+                        import core.stdc.string: memchr;
+                        auto delimp = memchr(p, t, w.length - newChecked);
+                        if(delimp != null)
                         {
                             // found it
-                            newChecked = p - w.ptr;
+                            newChecked = delimp + 1 - w.ptr;
                             break byline_outer_1;
                         }
                     }
-                    newChecked = p - w.ptr;
+                    else
+                    {
+                        auto e = w.ptr + w.length;
+                        while(p < e)
+                        {
+                            if(*p++ == t)
+                            {
+                                // found it
+                                newChecked = p - w.ptr;
+                                break byline_outer_1;
+                            }
+                        }
+                    }
+                    newChecked = w.length;
                 }
                 else
                 {

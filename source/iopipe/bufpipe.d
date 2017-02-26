@@ -466,7 +466,7 @@ unittest
     assert(p.window == "hello, world");
 }
 
-private struct BufferedInputSource(T, Allocator, Source)
+private struct BufferedInputSource(T, Allocator, Source, size_t optimalReadSize)
 {
     Source dev;
     BufferManager!(T, Allocator) buffer;
@@ -483,7 +483,6 @@ private struct BufferedInputSource(T, Allocator, Source)
     size_t extend(size_t elements)
     {
         import std.algorithm.comparison : max;
-        enum optimalReadSize = 1024 * 8; // TODO: figure out this size
         if(elements == 0 || (elements < optimalReadSize && buffer.capacity == 0))
         {
             // use optimal read size
@@ -517,10 +516,10 @@ private struct BufferedInputSource(T, Allocator, Source)
  *
  * Returns: An iopipe that uses the given buffer to read data from the given device source.
  */
-auto bufferedSource(T=ubyte, Allocator = GCNoPointerAllocator, Source)(Source dev)
+auto bufferedSource(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 * 1024 / T.sizeof, Source)(Source dev)
     if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
 {
-    return BufferedInputSource!(T, Allocator, Source)(dev);
+    return BufferedInputSource!(T, Allocator, Source, optimalReadSize)(dev);
 }
 
 unittest
