@@ -241,7 +241,7 @@ auto asText(UTFType b, Chain)(Chain c)
         static assert(0);
 }
 
-private struct ByLinePipe(Chain, bool DelimeterInFront)
+private struct ByLinePipe(Chain, bool DelimiterInFront)
 {
     alias CodeUnitType = Unqual!(typeof(Chain.init.window[0]));
     private
@@ -276,7 +276,7 @@ private struct ByLinePipe(Chain, bool DelimeterInFront)
 
     size_t extend(size_t elements = 0)
     {
-        static if(DelimeterInFront)
+        static if(DelimiterInFront)
         {
             // the delimiter is inserted into the front of the line
             auto newChecked = checked + validDelimElems;
@@ -308,7 +308,7 @@ byline_outer_1:
                         if(delimp != null)
                         {
                             // found it
-                            newChecked = delimp + (DelimeterInFront ? 0 : 1) - w.ptr;
+                            newChecked = delimp + (DelimiterInFront ? 0 : 1) - w.ptr;
                             break byline_outer_1;
                         }
                     }
@@ -320,7 +320,7 @@ byline_outer_1:
                             if(*p++ == t)
                             {
                                 // found it
-                                newChecked = p - (DelimeterInFront ? 1 : 0)  - w.ptr;
+                                newChecked = p - (DelimiterInFront ? 1 : 0)  - w.ptr;
                                 break byline_outer_1;
                             }
                         }
@@ -334,7 +334,7 @@ byline_outer_1:
                         if(w[newChecked] == t)
                         {
                             // found it.
-                            newChecked += (DelimeterInFront ? 0 : 1);
+                            newChecked += (DelimiterInFront ? 0 : 1);
                             break byline_outer_1;
                         }
                         ++newChecked;
@@ -366,7 +366,7 @@ byline_outer_2:
                         ++i;
                     }
                     // found it
-                    newChecked += (DelimeterInFront ? 0 : ve);
+                    newChecked += (DelimiterInFront ? 0 : ve);
                     break byline_outer_2;
                 }
 
@@ -391,12 +391,12 @@ byline_outer_2:
     size_t lines() { return _lines; }
 }
 
-auto byLine(bool DelimeterInFront = false, Chain)(Chain c, dchar delim = '\n')
+auto byLine(bool DelimiterInFront = false, Chain)(Chain c, dchar delim = '\n')
    if(isIopipe!Chain &&
       is(Unqual!(ElementType!(WindowType!Chain)) == dchar))
 {
     import std.traits: Unqual;
-    auto r = ByLinePipe!(Chain, DelimeterInFront)(c);
+    auto r = ByLinePipe!(Chain, DelimiterInFront)(c);
     // set up the delimeter
     static if(is(r.CodeUnitType == dchar))
     {
@@ -438,11 +438,11 @@ private struct ByLineNoDelimRange(Chain)
     }
 }
 
-auto byLineRange(bool KeepDelimeter = false, Chain)(Chain c, dchar delim = '\n')
+auto byLineRange(bool KeepDelimiter = false, Chain)(Chain c, dchar delim = '\n')
    if(isIopipe!Chain &&
       is(Unqual!(ElementType!(WindowType!Chain)) == dchar))
 {
-    static if(KeepDelimeter)
+    static if(KeepDelimiter)
     {
         // just use standard input range adapter
         return c.byLine(delim).asInputRange;
