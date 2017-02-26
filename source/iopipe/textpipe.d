@@ -241,7 +241,7 @@ auto asText(UTFType b, Chain)(Chain c)
         static assert(0);
 }
 
-private struct ByLinePipe(Chain, bool DelimiterInFront)
+private struct ByLinePipe(Chain)
 {
     alias CodeUnitType = Unqual!(typeof(Chain.init.window[0]));
     private
@@ -249,6 +249,7 @@ private struct ByLinePipe(Chain, bool DelimiterInFront)
         Chain chain;
         size_t checked;
         size_t _lines;
+        bool endsWithDelim;
         CodeUnitType[dchar.sizeof / CodeUnitType.sizeof] delimElems;
 
         static if(is(CodeUnitType == dchar))
@@ -268,6 +269,7 @@ private struct ByLinePipe(Chain, bool DelimiterInFront)
     }
 
     auto window() { return chain.window[0 .. checked]; }
+    ubyte delimTrailer() { return endsWithDelim ? validDelimElems : 0; }
     void release(size_t elements)
     {
         checked -= elements;
@@ -276,19 +278,8 @@ private struct ByLinePipe(Chain, bool DelimiterInFront)
 
     size_t extend(size_t elements = 0)
     {
-        static if(DelimiterInFront)
-        {
-            // the delimiter is inserted into the front of the line
-            auto newChecked = checked + validDelimElems;
-
-            // if eof, then we may not have a delimeter.
-            if(newChecked > chain.window.length)
-                newChecked = checked;
-        }
-        else
-        {
-            auto newChecked = checked;
-        }
+        auto newChecked = checked;
+        endsWithDelim = false;
         if(validDelimElems == 1)
         {
             // simple scan per element
@@ -308,7 +299,8 @@ byline_outer_1:
                         if(delimp != null)
                         {
                             // found it
-                            newChecked = delimp + (DelimiterInFront ? 0 : 1) - w.ptr;
+                            newChecked = delimp + 1 - w.ptr;
+                            endsWithDelim = true;
                             break byline_outer_1;
                         }
                     }
@@ -320,7 +312,8 @@ byline_outer_1:
                             if(*p++ == t)
                             {
                                 // found it
-                                newChecked = p - (DelimiterInFront ? 1 : 0)  - w.ptr;
+                                newChecked = p - w.ptr;
+                                endsWithDelim = true;
                                 break byline_outer_1;
                             }
                         }
@@ -334,7 +327,8 @@ byline_outer_1:
                         if(w[newChecked] == t)
                         {
                             // found it.
-                            newChecked += (DelimiterInFront ? 0 : 1);
+                            ++newChecked;
+                            endsWithDelim = true;
                             break byline_outer_1;
                         }
                         ++newChecked;
@@ -366,7 +360,8 @@ byline_outer_2:
                         ++i;
                     }
                     // found it
-                    newChecked += (DelimiterInFront ? 0 : ve);
+                    endsWithDelim = true;
+                    newChecked += ve;
                     break byline_outer_2;
                 }
 
@@ -391,12 +386,12 @@ byline_outer_2:
     size_t lines() { return _lines; }
 }
 
-auto byLine(bool DelimiterInFront = false, Chain)(Chain c, dchar delim = '\n')
+auto byLine(Chain)(Chain c, dchar delim = '\n')
    if(isIopipe!Chain &&
       is(Unqual!(ElementType!(WindowType!Chain)) == dchar))
 {
     import std.traits: Unqual;
-    auto r = ByLinePipe!(Chain, DelimiterInFront)(c);
+    auto r = ByLinePipe!(Chain)(c);
     // set up the delimeter
     static if(is(r.CodeUnitType == dchar))
     {
@@ -422,19 +417,14 @@ auto byLine(bool DelimiterInFront = false, Chain)(Chain c, dchar delim = '\n')
 private struct ByLineNoDelimRange(Chain)
 {
     Chain chain;
-    private bool isEmpty;
-    bool empty() { return isEmpty; }
-    auto front() { return chain.window; }
+    ubyte delimElems;
+    bool empty() { return chain.window.length == 0; }
+    auto front() { return chain.window[0 .. $ - delimElems]; }
     void popFront()
     {
         chain.release(chain.window.length);
         chain.extend(0);
-
-        if(chain.window.length == 0)
-            isEmpty = true;
-        else
-            // erase the delimeter
-            chain.release(chain.validDelimElems);
+        delimElems = chain.delimTrailer;
     }
 }
 
@@ -442,20 +432,18 @@ auto byLineRange(bool KeepDelimiter = false, Chain)(Chain c, dchar delim = '\n')
    if(isIopipe!Chain &&
       is(Unqual!(ElementType!(WindowType!Chain)) == dchar))
 {
+    auto p = c.byLine(delim);
     static if(KeepDelimiter)
     {
         // just use standard input range adapter
-        return c.byLine(delim).asInputRange;
+        return p.asInputRange;
     }
     else
     {
-        auto p = c.byLine!true(delim);
-        // check for corner case of stream beginning with the delimeter.
-        if(c.window.length < p.validDelimElems || c.window[0 .. p.validDelimElems] != p.delimElems[0 .. p.validDelimElems])
-        {
-            p.extend(0); // pre-load first line, no delimeter at the front.
-        }
-        return ByLineNoDelimRange!(typeof(p))(p);
+        auto r = ByLineNoDelimRange!(typeof(p))(p);
+        // pre-fetch first line
+        r.popFront();
+        return r;
     }
 }
 
@@ -466,6 +454,8 @@ unittest
     assert("hello\nworld".byLineRange!true.equal(["hello\n", "world"]));
     assert("\nhello\nworld".byLineRange.equal(["", "hello", "world"]));
     assert("\nhello\nworld".byLineRange!true.equal(["\n", "hello\n", "world"]));
+    assert("\nhello\nworld\n".byLineRange.equal(["", "hello", "world"]));
+    assert("\nhello\nworld\n".byLineRange!true.equal(["\n", "hello\n", "world\n"]));
 }
 
 static struct TextOutput(Chain)
