@@ -241,7 +241,7 @@ auto asText(UTFType b, Chain)(Chain c)
         static assert(0);
 }
 
-private struct ByLinePipe(Chain)
+private struct ByLinePipe(Chain, bool TrimLastDelimeter)
 {
     alias CodeUnitType = Unqual!(typeof(Chain.init.window[0]));
     private
@@ -250,6 +250,7 @@ private struct ByLinePipe(Chain)
         size_t checked;
         size_t _lines;
         CodeUnitType[dchar.sizeof / CodeUnitType.sizeof] delimElems;
+
         static if(is(CodeUnitType == dchar))
         {
             enum validDelimElems = 1;
@@ -275,7 +276,19 @@ private struct ByLinePipe(Chain)
 
     size_t extend(size_t elements = 0)
     {
-        auto newChecked = checked;
+        static if(TrimLastDelimeter)
+        {
+            // the delimiter is trimmed off the last checked line, so skip it.
+            auto newChecked = checked + validDelimElems;
+
+            // if eof, then we may not have a delimeter.
+            if(newChecked > chain.window.length)
+                newChecked = chain.window.length;
+        }
+        else
+        {
+            auto newChecked = checked;
+        }
         if(validDelimElems == 1)
         {
             // simple scan per element
@@ -295,7 +308,7 @@ byline_outer_1:
                         if(delimp != null)
                         {
                             // found it
-                            newChecked = delimp + 1 - w.ptr;
+                            newChecked = delimp + (TrimLastDelim ? 0 : 1) - w.ptr;
                             break byline_outer_1;
                         }
                     }
@@ -307,7 +320,7 @@ byline_outer_1:
                             if(*p++ == t)
                             {
                                 // found it
-                                newChecked = p - w.ptr;
+                                newChecked = p - (TrimLastDelim ? 1 : 0)  - w.ptr;
                                 break byline_outer_1;
                             }
                         }
@@ -321,7 +334,7 @@ byline_outer_1:
                         if(w[newChecked] == t)
                         {
                             // found it.
-                            ++newChecked;
+                            newChecked += (TrimLastDelim ? 0 : 1);
                             break byline_outer_1;
                         }
                         ++newChecked;
@@ -335,22 +348,25 @@ byline_outer_1:
 byline_outer_2:
             while(true)
             {
+                // load everyhing into locals to avoid unnecessary dereferences.
                 auto w = chain.window;
-                while(newChecked + validDelimElems <= w.length)
+                auto se = skippableElems;
+                auto ve = validDelimElems;
+                while(newChecked + ve <= w.length)
                 {
                     size_t i = 0;
                     auto ptr = delimElems.ptr;
-                    while(i < validDelimElems)
+                    while(i < ve)
                     {
                         if(w[newChecked + i] != *ptr++)
                         {
-                            newChecked += i < skippableElems ? i + 1 : skippableElems;
+                            newChecked += i < se ? i + 1 : se;
                             continue byline_outer_2;
                         }
                         ++i;
                     }
                     // found it
-                    newChecked += validDelimElems;
+                    newChecked += (TrimLastDelim ? 0 : ve);
                     break byline_outer_2;
                 }
 
@@ -375,12 +391,12 @@ byline_outer_2:
     size_t lines() { return _lines; }
 }
 
-auto byLine(Chain)(Chain c, dchar delim = '\n')
+auto byLine(Chain)(Chain c, dchar delim = '\n', bool TrimLastDelim = false)
    if(isIopipe!Chain &&
       is(Unqual!(ElementType!(WindowType!Chain)) == dchar))
 {
     import std.traits: Unqual;
-    auto r = ByLinePipe!Chain(c);
+    auto r = ByLinePipe!(Chain, TrimLastDelim)(c);
     // set up the delimeter
     static if(is(r.CodeUnitType == dchar))
     {

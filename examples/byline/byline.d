@@ -11,11 +11,14 @@ void processLines(UTFType utfType, Dev)(Dev dev)
     import std.conv: to;
     if(doOutput)
         writeln("encoding is: ", utfType.to!string);
+    auto lines = 0;
     foreach(l; dev.asText!(utfType).byLine.asInputRange)
     {
         if(doOutput)
             writeln("read line length: ", l.length);
+        ++lines;
     }
+    writefln("number of lines: %s", lines);
 }
 
 void main(string[] args)
