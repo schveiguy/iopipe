@@ -225,7 +225,7 @@ unittest
 }
 
 // call this after detecting the byte order/width
-auto asText(UTFType b, Chain)(Chain c)
+auto asText(UTFType b = UTFType.UTF8, Chain)(Chain c)
 {
     static if(b == UTFType.UTF8 || b == UTFType.Unknown)
         return c.arrayCastPipe!char;
@@ -412,8 +412,8 @@ auto byLine(Chain)(Chain c, dchar delim = '\n')
     return r;
 }
 
-// each line except for the very first line has the delimeter at the front.
-// Therefore, each time we extend, we release the delimeter as well.
+// same as a normal range, but we don't return the delimiter.
+// Note that the Chain MUST be a ByDelim iopipe.
 private struct ByLineNoDelimRange(Chain)
 {
     Chain chain;
@@ -572,6 +572,7 @@ static struct TextOutput(Chain)
         }
     }
 }
+
 auto textOutput(Chain)(Chain c)
 {
     // create an output range of dchar/code units around c. We assume releasing and

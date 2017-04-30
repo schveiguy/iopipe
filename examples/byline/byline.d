@@ -25,7 +25,7 @@ void main(string[] args)
 {
     if(args.length > 1 && args[1] == "-nooutput")
         doOutput = false;
-    auto dev = new IODevice(0).bufferedSource;
+    auto dev = openDev(0).bufd;
     dev.ensureElems(4);
     switch(dev.window.detectBOM)
     {

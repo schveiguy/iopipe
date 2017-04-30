@@ -267,10 +267,14 @@ unittest
         mixin implementValve!(upstream);
     }
 
+    auto makeWriter(Chain)(Chain c)
+    {
+        return writer!(Chain)(c);
+    }
+
 
     char[] sourceBuf = new char[100];
-    auto prevalve = sourceBuf.simpleValve.holdingValve;
-    auto pipeline = writer!(typeof(prevalve))(prevalve).holdingLoop;
+    auto pipeline = sourceBuf.simpleValve.push!(c => makeWriter(c));
 
     void write(string s)
     {
@@ -295,4 +299,23 @@ unittest
     assert(pipeline.extend(100) == 0); // cannot extend normal array automatically
     assert(pipeline.valve.window.length == 87);
     assert(destBuf == "hello, world!");
+
 }
+
+/**
+ * Convenience mechanism to wrap a specified output pipeline with a holding
+ * loop. It avoids having to explicitly specify the loop begin and end.
+ *
+ * Params:
+ *    pipeline - a lambda template used to generate the the pipeline that will
+ *    be set up as a push chain.
+ *    c - An ioPipe to be used as the source for the data being pushed.
+ * Returns: A wrapped chain that will push any data that is released as needed
+ * (i.e. as the buffer fills up).
+ */
+auto push(alias pipeline, Chain)(Chain c) if (isIopipe!(typeof(pipeline(c.holdingValve))))
+{
+    return pipeline(c.holdingValve).holdingLoop;
+}
+
+// TODO: need good example to show how to use this.

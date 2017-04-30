@@ -507,20 +507,30 @@ private struct BufferedInputSource(T, Allocator, Source, size_t optimalReadSize)
 }
 
 /**
- * A buffered source ties a buffer to an input source into a pipe definition.
+ * Create a buffer to manage the data from the given source, and wrap into an iopipe.
  *
  * Params: T - The type of element to allocate with the allocator
  *         Allocator - The allocator to use for managing the buffer
- *         Source - The type of the input stream. This must have a function `read` that can read into the buffer's window.
- *         dev - The input stream to use.
+ *         Source - The type of the input stream. This must have a function
+ *         `read` that can read into the buffer's window.
+ *         dev - The input stream to use. If not specified, then a NullDev source is assumed.
  *
  * Returns: An iopipe that uses the given buffer to read data from the given device source.
  */
-auto bufferedSource(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 * 1024 / T.sizeof, Source)(Source dev)
+auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 * 1024 / T.sizeof, Source)(Source dev)
     if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
 {
     return BufferedInputSource!(T, Allocator, Source, optimalReadSize)(dev);
 }
+
+/// ditto
+auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 * 1024 / T.sizeof)()
+{
+    import iopipe.stream: nullDev;
+    return nullDev.bufd!(T, Allocator, optimalReadSize)();
+}
+
+
 
 unittest
 {
@@ -539,7 +549,7 @@ unittest
         }
     }
 
-    auto b = ArrayReader("hello, world!").bufferedSource!(char);
+    auto b = ArrayReader("hello, world!").bufd!(char);
 
     assert(b.window.length == 0);
     assert(b.extend(0) == 13);
@@ -699,4 +709,30 @@ unittest
         str = str[elem.length .. $];
     }
     assert(str.length == 0);
+}
+
+/**
+ * Create an input source from a given Chain, and a given translation function/template.
+ *
+ * It is advisable to use a template or lambda that does not require a closure,
+ * and is not a delegate from a struct that might move.
+ */
+template iosrc(alias fun, Chain)
+{
+    struct IOSource
+    {
+        Chain chain;
+        size_t read(T)(T buf) if (is(typeof(fun(chain, buf)) == size_t))
+        {
+            return fun(chain, buf);
+        }
+
+        // We are just wrapping the chain, so allow usage of it completely
+        alias chain this;
+    }
+
+    auto iosrc(Chain c)
+    {
+        return IOSource(c);
+    }
 }

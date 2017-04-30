@@ -1,12 +1,13 @@
 /**
-Copyright: Copyright Steven Schveighoffer 2011-.
+Copyright: Copyright Steven Schveighoffer 2017.
 License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy at
            http://www.boost.org/LICENSE_1_0.txt)
 Authors:   Steven Schveighoffer
  */
 module iopipe.zip;
-import iopipe.buffer;
 import iopipe.traits;
+import iopipe.buffer;
+import iopipe.bufpipe;
 import etc.c.zlib;
 
 enum CompressionFormat
@@ -16,62 +17,92 @@ enum CompressionFormat
     determineFromData
 }
 
-private struct UnzipPipe(Allocator, Chain)
+// this struct is the basis for the zip/unzip mechanisms. It is essentially an
+// iopipe with the z_stream piece added. Used as an iopipe, it's just
+// equivalent to chain. However, it provides a mechanism to read the data into
+// a compressed/uncompressed format. In that sense, it's more like a source.
+// But it needs bufpipe.iosrc to convert to a true Source.
+private struct ZipPipe(Chain)
 {
+    import std.typecons: RefCounted, RefCountedAutoInitialize;
     Chain chain;
-    BufferManager!(ubyte, Allocator) buffer;
-    z_stream zstream;
-    this(Chain c, CompressionFormat format = CompressionFormat.determineFromData)
+    // zstream cannot be moved once initialized, as it has internal pointers to itself.
+    RefCounted!(z_stream, RefCountedAutoInitialize.no) zstream;
+    int flushMode;
+    alias chain this;
+
+    // convenience, because this is so long and painful!
+    private z_stream *zstrptr()
     {
-        chain = c;
-        buffer.extend(1024 * 8);
+        return &zstream.refCountedPayload();
+    }
+
+    private void initForInflate(CompressionFormat format)
+    {
+        zstream.refCountedStore.ensureInitialized;
         zstream.next_in = chain.window.ptr;
         zstream.avail_in = cast(uint)chain.window.length;
-        zstream.next_out = buffer.window.ptr;
-        zstream.avail_out = cast(uint)buffer.window.length;
-        if(inflateInit2(&zstream, 15 + (format == CompressionFormat.gzip ? 16 : format == CompressionFormat.determineFromData ? 32 : 0)) != Z_OK)
+        int windowbits = 15;
+        switch(format) with(CompressionFormat)
+        {
+        case gzip:
+            windowbits += 16;
+            break;
+        case determineFromData:
+            windowbits += 32;
+            break;
+        case deflate:
+        default:
+            // use 15
+            break;
+        }
+        if(inflateInit2(zstrptr, windowbits) != Z_OK)
         {
             throw new Exception("Error initializing zip inflation");
         }
 
-        // this likely does nothing, but just in case...
+        // just in case inflateinit consumed some bytes.
         chain.release(zstream.next_in - chain.window.ptr);
     }
-    auto window() {
-        return buffer.window[0 .. $-zstream.avail_out];
-    }
-    void release(size_t elements)
+
+    private void initForDeflate(CompressionFormat format)
     {
-        assert(elements + zstream.avail_out <= buffer.window.length);
-        buffer.releaseFront(elements);
+        zstream.refCountedStore.ensureInitialized();
+        zstream.next_in = chain.window.ptr;
+        zstream.avail_in = cast(uint)chain.window.length;
+        flushMode = Z_NO_FLUSH;
+        int windowbits = 15;
+        switch(format) with(CompressionFormat)
+        {
+        case gzip:
+            windowbits += 16;
+            break;
+        case deflate:
+        default:
+            // use 15
+            break;
+        }
+
+        if(deflateInit2(zstrptr, Z_DEFAULT_COMPRESSION, Z_DEFLATED, windowbits,
+                        8, Z_DEFAULT_STRATEGY) != Z_OK)
+        {
+            throw new Exception("Error initializing zip deflation");
+        }
+
+        // just in case inflateinit consumed some bytes.
+        chain.release(zstream.next_in - chain.window.ptr);
     }
 
-    size_t extend(size_t elements)
+    private size_t doInflate(ubyte[] target)
     {
-        if(zstream.zalloc == null)
-            // stream is closed.
+        if(target.length == 0 || zstream.zalloc == null)
+            // no data requested, or stream is closed
             return 0;
-        if(elements == 0)
-        {
-            // TODO: what to do here?
-            elements = 1024 * 8;
-        }
-
-        auto oldValid = window.length;
-        if(zstream.avail_out < elements)
-        {
-            // need more space to unzip here.
-            import std.algorithm.comparison : max;
-            buffer.extend(max(elements - zstream.avail_out, buffer.avail()));
-
-            // update the zstream
-            zstream.next_out = buffer.window.ptr + oldValid;
-            zstream.avail_out = cast(uint)(buffer.window.length - oldValid);
-        }
+        zstream.next_out = target.ptr;
+        zstream.avail_out = cast(uint)target.length;
 
         // now, unzip the data into the buffer. Stop when we have done at most
         // 2 extends on the input data.
-        // TODO: is 2 extends the right metric?
         if(chain.window.length == 0)
         {
             // need at least some data to work with.
@@ -79,19 +110,17 @@ private struct UnzipPipe(Allocator, Chain)
         }
         for(int i = 0; i < 2; ++i)
         {
-            import std.stdio;
             zstream.next_in = chain.window.ptr;
             zstream.avail_in = cast(uint)chain.window.length;
-            auto inflate_result = inflate(&zstream, Z_NO_FLUSH);
+            auto inflate_result = inflate(zstrptr, Z_NO_FLUSH);
             chain.release(zstream.next_in - chain.window.ptr);
             if(inflate_result == Z_STREAM_END)
             {
                 // all done.
-                auto curAvailOut = zstream.avail_out;
-                inflateEnd(&zstream);
-                zstream = zstream.init;
-                zstream.avail_out = curAvailOut;
-                break;
+                size_t result = target.length - zstream.avail_out;
+                inflateEnd(zstrptr);
+                zstream = z_stream.init;
+                return result;
             }
             else if(inflate_result == Z_OK)
             {
@@ -110,92 +139,21 @@ private struct UnzipPipe(Allocator, Chain)
             chain.extend(0);
         }
 
-        // update the new data available
-        return buffer.window.length - zstream.avail_out - oldValid;
+        // return the number of bytes that were inflated
+        return target.length - zstream.avail_out;
     }
 
-    mixin implementValve!chain;
-}
-
-auto unzip(Allocator = GCNoPointerAllocator, Chain)(Chain c, CompressionFormat format = CompressionFormat.determineFromData)
-    if(isIopipe!(Chain) && is(WindowType!Chain == ubyte[]))
-{
-    if(c.window.length == 0)
-        c.extend(0);
-    return UnzipPipe!(Allocator, Chain)(c, format);
-}
-
-private struct ZipPipe(Allocator, Chain)
-{
-    Chain chain;
-    BufferManager!(ubyte, Allocator) buffer;
-    z_stream zstream;
-    int flushMode;
-
-    this(Chain c, CompressionFormat format = CompressionFormat.deflate)
+    private size_t doDeflate(ubyte[] target)
     {
-        chain = c;
-        buffer.extend(1024 * 8);
-        zstream.next_in = chain.window.ptr;
-        zstream.avail_in = cast(uint)chain.window.length;
-        zstream.next_out = buffer.window.ptr;
-        zstream.avail_out = cast(uint)buffer.window.length;
-        flushMode = Z_NO_FLUSH;
-        if(deflateInit2(&zstream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + (format == CompressionFormat.gzip ? 16 : 0),
-                        8, Z_DEFAULT_STRATEGY) != Z_OK)
-        {
-            throw new Exception("Error initializing zip deflation");
-        }
-
-        // this likely does nothing, but just in case...
-        chain.release(zstream.next_in - chain.window.ptr);
-    }
-    auto window()
-    {
-        return buffer.window[0 .. $-zstream.avail_out];
-    }
-    void release(size_t elements)
-    {
-        assert(elements + zstream.avail_out <= buffer.window.length);
-        buffer.releaseFront(elements);
-    }
-
-    size_t extend(size_t elements)
-    {
-        if(zstream.zalloc == null)
+        if(target.length == 0 || zstream.zalloc == null)
+            // no data requested, or stream is closed
             return 0;
 
-        if(elements == 0)
+        zstream.next_out = target.ptr;
+        zstream.avail_out = cast(uint)target.length;
+
+        while(zstream.avail_out == target.length) // while we haven't written anything yet
         {
-            // TODO: what to do here?
-            elements = 1024 * 8;
-        }
-
-        auto oldValid = window.length;
-        bool needMoreWriteSpace = false;
-        while(window.length == oldValid)
-        {
-            // if we need to extend the buffer, do so.
-            if(needMoreWriteSpace)
-            {
-                if(zstream.avail_out >= elements)
-                {
-                    // nudge up elements to ensure an extension
-                    elements = zstream.avail_out + 1024;
-                }
-                needMoreWriteSpace = false;
-            }
-            if(zstream.avail_out < elements)
-            {
-                // need more space for zipping
-                import std.algorithm.comparison : max;
-                buffer.extend(max(elements - zstream.avail_out, buffer.avail()));
-
-                // update the zstream
-                zstream.next_out = buffer.window.ptr + oldValid;
-                zstream.avail_out = cast(uint)(buffer.window.length - oldValid);
-            }
-
             // ensure we have some data to zip
             if(flushMode == Z_NO_FLUSH && chain.window.length == 0)
             {
@@ -206,7 +164,7 @@ private struct ZipPipe(Allocator, Chain)
             }
             zstream.next_in = chain.window.ptr;
             zstream.avail_in = cast(uint)chain.window.length;
-            auto deflate_result = deflate(&zstream, flushMode);
+            auto deflate_result = deflate(zstrptr, flushMode);
             chain.release(zstream.next_in - chain.window.ptr);
 
             if(deflate_result == Z_OK)
@@ -214,7 +172,7 @@ private struct ZipPipe(Allocator, Chain)
                 if(flushMode == Z_FINISH)
                 {
                     // zlib doesn't have enough data to make progress
-                    needMoreWriteSpace = true;
+                    break;
                 }
             }
             else if(deflate_result == Z_BUF_ERROR)
@@ -225,16 +183,15 @@ private struct ZipPipe(Allocator, Chain)
                     flushMode = Z_FINISH;
                 }
                 // need more write space
-                needMoreWriteSpace = true;
+                break;
             }
             else if(deflate_result == Z_STREAM_END)
             {
                 // finished with the stream
-                auto curAvailOut = zstream.avail_out;
-                deflateEnd(&zstream);
-                zstream = zstream.init;
-                zstream.avail_out = curAvailOut;
-                break;
+                auto result = target.length - zstream.avail_out;
+                deflateEnd(zstrptr);
+                zstream = z_stream.init;
+                return result;
             }
             else
             {
@@ -242,15 +199,40 @@ private struct ZipPipe(Allocator, Chain)
                 throw new Exception("unhandled zip condition " ~ to!string(deflate_result));
             }
         }
-
-        return buffer.window.length - zstream.avail_out - oldValid;
+        return target.length - zstream.avail_out;
     }
+}
 
-    mixin implementValve!chain;
+auto unzipSrc(Chain)(Chain c, CompressionFormat format = CompressionFormat.determineFromData)
+    if(isIopipe!(Chain) && is(WindowType!Chain == ubyte[]))
+{
+    if(c.window.length == 0)
+        c.extend(0);
+    auto zsrc = iosrc!((c, b) => c.doInflate(b))(ZipPipe!(Chain)(c));
+    // initialize the unzip stream.
+    zsrc.initForInflate(format);
+    return zsrc;
+}
+
+auto zipSrc(Chain)(Chain c, CompressionFormat format = CompressionFormat.init)
+    if(isIopipe!(Chain) && is(WindowType!Chain == ubyte[]))
+{
+    if(c.window.length == 0)
+        c.extend(0);
+    auto zsrc = iosrc!((c, b) => c.doDeflate(b))(ZipPipe!(Chain)(c));
+    // initialize the unzip stream.
+    zsrc.initForDeflate(format);
+    return zsrc;
+}
+
+auto unzip(Allocator = GCNoPointerAllocator, Chain)(Chain c, CompressionFormat format = CompressionFormat.determineFromData)
+    if(isIopipe!(Chain) && is(WindowType!Chain == ubyte[]))
+{
+    return unzipSrc(c, format).bufd!(ubyte, Allocator);
 }
 
 auto zip(Allocator = GCNoPointerAllocator, Chain)(Chain c, CompressionFormat format = CompressionFormat.init)
     if(isIopipe!(Chain) && is(WindowType!Chain == ubyte[]))
 {
-    return ZipPipe!(Allocator, Chain)(c, format);
+    return zipSrc(c, format).bufd!(ubyte, Allocator);
 }

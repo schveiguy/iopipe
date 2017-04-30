@@ -14,7 +14,7 @@ private import std.string : toStringz;
  * The basic device-based Input and Output stream.  This uses the OS's native
  * file handle to communicate using physical devices.
  */
-class IODevice
+class IODev
 {
     enum OpenMode
     {
@@ -30,7 +30,7 @@ class IODevice
         // fd is set to -1 when the stream is closed
         int fd = -1;
 
-        // This is purely used only to close the file when this IODevice is
+        // This is purely used only to close the file when this IODev is
         // using the same file descriptor as a FILE *.
         FILE * _cfile;
 
@@ -248,8 +248,8 @@ class IODevice
     void close()
     {
         if(_cfile && .fclose(_cfile) == EOF)
-            throw new Exception("close failed, check errno");
-        if(fd != -1 && .close(fd) < 0)
+            throw new Exception("fclose failed, check errno");
+        else if(fd != -1 && .close(fd) < 0)
             throw new Exception("close failed, check errno");
         _cfile = null;
         fd = -1;
@@ -261,7 +261,7 @@ class IODevice
      * deterministically using close, because there is no guarantee the GC will
      * call this destructor.
      *
-     * If the IODevice was designated not to close on destroy, the destructor
+     * If the IODev was designated not to close on destroy, the destructor
      * does not close the underlying handle.
      */
     ~this()
@@ -300,29 +300,42 @@ class IODevice
 }
 
 /**
- * A NullDevice is a source that reads uninitialized data.
+ * Convenience function to open a file without using the new operator.
  */
-struct NullDevice
+IODev openDev(Args...)(Args args) if (is(typeof(new IODev(args))))
+{
+    return new IODev(args);
+}
+
+
+/**
+ * A source that reads uninitialized data.
+ */
+struct NullDev
 {
     /**
      * read the data. Always succeeds.
      */
-    size_t read(T)(T buf)
+    size_t read(T)(T buf) const
     {
         // null data doesn't matter
         return buf.length;
     }
 }
 
+immutable NullDev nullDev;
+
 /**
  * A source stream that always reads zeros, no matter what the data type is.
  */
-struct ZeroSource
+struct ZeroDev
 {
-    size_t read(T)(T buf)
+    size_t read(T)(T buf) const
     {
         // zero data
         buf[] = 0;
         return buf.length;
     }
 }
+
+immutable ZeroDev zeroDev;

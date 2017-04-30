@@ -7,14 +7,11 @@ import std.range.primitives;
 void doConvert(UTFType oEnc, Input)(Input input)
 {
     import iopipe.valve;
-    auto outputDev = new IODevice(1); // stdout
-    auto oChain = NullDevice.init
-        .bufferedSource!(CodeUnit!oEnc)
-        .holdingValve
-        .encodeText!(oEnc)
-        .outputPipe(outputDev)
-        .holdingLoop // drive from the valve
-        .textOutput;
+    auto oChain = bufd!(CodeUnit!oEnc) // make a buffered source
+        .push!(a => a
+               .encodeText!(oEnc)
+               .outputPipe(openDev(1))) // push to stdout.
+        .textOutput; // turn into a standard output range
     if(!input.window.empty && input.window.front != 0xfeff)
     {
         // write a BOM if not present
@@ -33,7 +30,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
     if(oEnc == iEnc)
     {
         // straight pass-through
-        input.outputPipe(new IODevice(1)).process();
+        input.outputPipe(new IODev(1)).process();
     }
     else
     {
@@ -48,7 +45,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             static if(iEnc == UTFType.UTF16BE)
             {
                 // just changing byte order. Just do a byte swapper.
-                input.arrayCastPipe!(ushort).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODevice(1)).process();
+                input.arrayCastPipe!(ushort).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODev(1)).process();
             }
             else
             {
@@ -61,7 +58,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             static if(iEnc == UTFType.UTF16LE)
             {
                 // just changing byte order. Just do a byte swapper.
-                input.arrayCastPipe!(ushort).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODevice(1)).process();
+                input.arrayCastPipe!(ushort).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODev(1)).process();
             }
             else
             {
@@ -74,7 +71,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             static if(iEnc == UTFType.UTF32BE)
             {
                 // just changing byte order. Just do a byte swapper.
-                input.arrayCastPipe!(uint).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODevice(1)).process();
+                input.arrayCastPipe!(uint).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODev(1)).process();
             }
             else
             {
@@ -87,7 +84,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             static if(iEnc == UTFType.UTF32LE)
             {
                 // just changing byte order. Just do a byte swapper.
-                input.arrayCastPipe!(uint).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODevice(1)).process();
+                input.arrayCastPipe!(uint).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODev(1)).process();
             }
             else
             {
@@ -104,7 +101,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
 void main(string[] args)
 {
     // convert all data from input stream to given format
-    auto dev = new IODevice(0).bufferedSource;
+    auto dev = new IODev(0).bufd;
     dev.ensureElems(4);
     switch(dev.window.detectBOM)
     {
