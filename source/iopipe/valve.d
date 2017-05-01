@@ -302,6 +302,25 @@ unittest
 
 }
 
+template autoFlush(Chain) if (__traits(hasMember, Chain, "flush"))
+{
+    struct AutoFlusher
+    {
+        Chain c;
+        alias c this;
+        ~this()
+        {
+            c.flush();
+        }
+    }
+
+    auto autoFlush(Chain c)
+    {
+        import std.typecons: RefCounted, RefCountedAutoInitialize;
+        return RefCounted!(AutoFlusher, RefCountedAutoInitialize.no)(c);
+    }
+}
+
 /**
  * Convenience mechanism to wrap a specified output pipeline with a holding
  * loop. It avoids having to explicitly specify the loop begin and end.
@@ -309,13 +328,26 @@ unittest
  * Params:
  *    pipeline - a lambda template used to generate the the pipeline that will
  *    be set up as a push chain.
+ *    autoFlush - true (default) if you wish to auto-flush the push pipeline
+ *    when all references to it are gone. This moves the whole chain into a
+ *    RefCounted struct which automatically flushes any remaining data that
+ *    hasn't been flushed.
  *    c - An ioPipe to be used as the source for the data being pushed.
  * Returns: A wrapped chain that will push any data that is released as needed
  * (i.e. as the buffer fills up).
+ *
+ * Note: If autoFlush is false, you will need to manually call flush on the
+ * pipeline after all processing is done.
  */
-auto push(alias pipeline, Chain)(Chain c) if (isIopipe!(typeof(pipeline(c.holdingValve))))
+auto push(alias pipeline, bool autoFlush = true, Chain)(Chain c) if (isIopipe!(typeof(pipeline(c.holdingValve))))
 {
-    return pipeline(c.holdingValve).holdingLoop;
+    static if(autoFlush)
+    {
+        import std.typecons: refCounted;
+        return .autoFlush(pipeline(c.holdingValve).holdingLoop);
+    }
+    else
+        return pipeline(c.holdingValve).holdingLoop;
 }
 
 // TODO: need good example to show how to use this.

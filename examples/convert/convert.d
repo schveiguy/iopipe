@@ -20,7 +20,6 @@ void doConvert(UTFType oEnc, Input)(Input input)
 
     foreach(w; input.ensureDecodeable.asInputRange)
         put(oChain, w);
-    oChain.chain.flush();
 }
 
 void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
