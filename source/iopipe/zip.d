@@ -108,7 +108,7 @@ private struct ZipPipe(Chain)
             // need at least some data to work with.
             chain.extend(0);
         }
-        for(int i = 0; i < 2; ++i)
+        foreach(i; 0 .. 2)
         {
             zstream.next_in = chain.window.ptr;
             zstream.avail_in = cast(uint)chain.window.length;

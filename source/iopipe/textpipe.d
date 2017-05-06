@@ -106,14 +106,12 @@ ee_outer:
             foreach(ubyte i; 1 .. 4)
             {
                 import core.bitop : bsr;
-                import std.stdio;
                 if(w.length < i)
                 {
                     // either no data, or invalid sequence.
                     if(i > 1)
                     {
                         // TODO: throw some error?
-                        stderr.writeln("oops!");
                     }
                     partial = 0;
                     break ee_outer;
@@ -125,7 +123,7 @@ ee_outer:
                     // ascii character
                     if(i > 1)
                     {
-                        stderr.writeln("oops!");
+                        // TODO: throw some error?
                     }
                     partial = 0;
                     break ee_outer;
@@ -146,7 +144,6 @@ ee_outer:
                 default:
                         // invalid sequence, let it fail
                         // TODO: throw some error?
-                        stderr.writeln("oops!");
                         partial = 0;
                         break ee_outer;
                 }
@@ -186,7 +183,7 @@ ee_outer:
  *    Chain c - The iopipe whose element type is one of char, wchar, or dchar.
  * 
  * Returns:
- *    An appropriate iopipe that ensures decodeability. Not that dchar iopipes
+ *    An appropriate iopipe that ensures decodeability. Note that dchar iopipes
  *    are always decodeable, so the result is simply a return of the input. 
  */
 auto ensureDecodeable(Chain)(Chain c) if (isIopipe!Chain && isSomeChar!(ElementEncodingType!(WindowType!Chain)))
@@ -225,7 +222,7 @@ unittest
 }
 
 // call this after detecting the byte order/width
-auto asText(UTFType b = UTFType.UTF8, Chain)(Chain c)
+auto decodeText(UTFType b = UTFType.UTF8, Chain)(Chain c)
 {
     static if(b == UTFType.UTF8 || b == UTFType.Unknown)
         return c.arrayCastPipe!char;
@@ -599,4 +596,160 @@ auto encodeText(UTFType enc, Chain)(Chain c)
     }
     else
         assert(0);
+}
+
+template textConverter(Char, bool ensureBOM = false, Chain)
+{
+    struct TextConverter
+    {
+        Chain chain;
+        static if(ensureBOM)
+            bool atBeginning = true;
+
+        auto release(size_t elems)
+        {
+            atBeginning = atBeginning && elems == 0;
+            return chain.release(elems);
+        }
+
+        size_t read(Char[] buf)
+        {
+            alias SrcChar = ElementEncodingType!(WindowType!(Chain));
+            if(buf.length == 0)
+                return 0;
+            // first step, check to see if the first code point is a BOM
+            size_t result = 0;
+            static if(ensureBOM)
+            {
+                if(atBeginning)
+                {
+                    // utf8 bom is 3 code units, in other char types, it's only 1.
+                    bool addBOM = true;
+                    static if(is(Unqual!SrcChar == char))
+                    {
+                        if(chain.window.length < 3)
+                            chain.extend(0);
+                        if(chain.window.length == 0)
+                            return 0; // special case, don't insert a BOM for a blank file.
+                        if(chain.window.length >= 3 &&
+                           chain.window[0] == 0xef &&
+                           chain.window[1] == 0xbb &&
+                           chain.window[2] == 0xbf)
+                        {
+                            addBOM = false;
+                        }
+                    }
+                    else
+                    {
+                        if(chain.window.length < 1)
+                            if(chain.extend(0) == 0)
+                                return 0; // special case, don't insert a BOM for a blank file.
+                        if(chain.window[0] == 0xfeff)
+                            addBOM = false;
+                    }
+
+                    if(addBOM)
+                    {
+                        // write the BOM to the given buffer
+                        static if(is(Char == char))
+                        {
+                            buf[0] = 0xef;
+                            buf[1] = 0xbb;
+                            buf[2] = 0xbf;
+
+                            result = 3;
+                            buf = buf[3 .. $];
+                        }
+                        else
+                        {
+                            buf[0] = 0xfeff;
+                            result = 1;
+                            buf = buf[1 .. $];
+                        }
+                    }
+                }
+            }
+            static if(is(Unqual!Char == Unqual!SrcChar))
+            {
+                import std.algorithm.mutation: copy;
+                import std.algorithm.comparison: max;
+                // try an extend when window length gets to be less than read size.
+                if(chain.window.length < buf.length)
+                    chain.extend(buf.length - chain.window.length);
+                if(chain.window.length == 0)
+                    // no more data
+                    return 0;
+                immutable len = max(chain.window.length, buf.length);
+                copy(chain.window[0 .. len], buf[0 .. len]);
+                chain.release(len);
+                return result + len;
+            }
+            else
+            {
+                // need to transcode each code point.
+                import std.utf;
+                auto win = chain.window;
+                size_t pos = 0;
+                bool didExtend = false;
+                bool eof = false;
+                while(buf.length > 0)
+                {
+                    enum minValidElems = is(Unqual!Char == dchar) ? 1 : 4;
+                    if(!eof && pos + minValidElems > chain.window.length)
+                    {
+                        if(!didExtend)
+                        {
+                            didExtend = true;
+                            // give the upstream pipe some buffer space
+                            chain.release(pos);
+                            pos = 0;
+                            if(chain.extend(0))
+                            {
+                                win = chain.window;
+                                continue;
+                            }
+                            win = chain.window;
+                            // else, we aren't going to get any more data. decode as needed.
+                            eof = true;
+                        }
+                        else
+                            // don't decode any more. We can wait until next time.
+                            break;
+                    }
+                    if(pos == win.length)
+                        // end of the stream
+                        break;
+                    // decode a code point
+                    auto oldPos = pos;
+                    dchar dc;
+                    dc = decode(win, pos);
+                    // encode the dchar into a new item
+                    Char[dchar.sizeof / Char.sizeof] encoded;
+                    auto nChars = encode(encoded, dc);
+                    if(nChars > buf.length)
+                    {
+                        // read as much as we could.
+                        pos = oldPos;
+                        break;
+                    }
+                    if(nChars == 1)
+                        buf[0] = encoded[0];
+                    else
+                        buf[0 .. nChars] = encoded[0 .. nChars];
+                    result += nChars;
+                    buf = buf[nChars .. $];
+                }
+
+                // release the chain data that we have processed.
+                chain.release(pos);
+                return result;
+            }
+        }
+        alias chain this;
+    }
+
+    auto textConverter(Chain c)
+    {
+        return TextConverter(c).bufd!(Char);
+    }
 }
