@@ -12,7 +12,7 @@ void processLines(UTFType utfType, Dev)(Dev dev)
     if(doOutput)
         writeln("encoding is: ", utfType.to!string);
     auto lines = 0;
-    foreach(l; dev.decodeText!(utfType).byLine.asInputRange)
+    foreach(l; dev.assumeEncoding!utfType.delimitedText.asInputRange)
     {
         if(doOutput)
             writeln("read line length: ", l.length);

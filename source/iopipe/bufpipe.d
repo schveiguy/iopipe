@@ -412,7 +412,10 @@ private struct ArrayCastPipe(Chain, T)
  */
 auto arrayCastPipe(T, Chain)(Chain c) if(isIopipe!(Chain) && isArray!(WindowType!(Chain)))
 {
-    return ArrayCastPipe!(Chain, T)(c);
+    static if(is(typeof(c.window[0]) == T))
+        return c;
+    else
+        return ArrayCastPipe!(Chain, T)(c);
 }
 
 unittest

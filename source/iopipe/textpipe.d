@@ -8,7 +8,7 @@ module iopipe.textpipe;
 import iopipe.bufpipe;
 import iopipe.traits;
 import std.range: isRandomAccessRange, hasLength, ElementType, ElementEncodingType;
-import std.traits: Unqual, isSomeChar, isArray;
+import std.traits: Unqual, isSomeChar, isDynamicArray, isIntegral;
 
 /**
  * Used to specify stream type
@@ -75,7 +75,7 @@ UTFType detectBOM(R)(R r) if (isRandomAccessRange!R && hasLength!R && is(Element
     return UTFType.Unknown;
 }
 
-unittest
+@safe unittest
 {
     with(UTFType)
     {
@@ -190,10 +190,12 @@ auto ensureDecodeable(Chain)(Chain c) if (isIopipe!Chain && isSomeChar!(ElementE
 {
     import std.traits: Unqual;
     alias CodeUnitType = Unqual!(ElementEncodingType!(WindowType!Chain));
-    // need to stop chaining if the last thing was an ensureDecodable. Of course, it's very
-    // hard to check if the type is a DecodeableWindow. What we do is pretend to wrap c's upstream
-    // chain, and see if it results in the exact type we were passed. If this is the case, then
-    // it must be a type that 
+
+    // need to stop chaining if the last thing was an ensureDecodable. Of
+    // course, it's very hard to check if the type is a DecodeableWindow. What
+    // we do is pretend to wrap c's upstream chain, and see if it results in
+    // the exact type we were passed. If this is the case, then it must be a
+    // type that was wrapped with a DecodableWindow.
     static if(is(CodeUnitType == dchar))
     {
         // always decodeable
@@ -221,31 +223,82 @@ unittest
     static assert(is(typeof(d1) == typeof(d2)));
 }
 
-// call this after detecting the byte order/width
-auto decodeText(UTFType b = UTFType.UTF8, Chain)(Chain c)
+/**
+ * Given an ioPipe whose window is a buffer that is a dynamic array of data of
+ * integral type, performs the proper transformations in order to get a buffer
+ * of valid char, wchar, or dchar elements, depending on the provided encoding.
+ * This function is useful for when you have data from a raw source (such as a
+ * file or stream) that you have determined or know is really a stream of UTF
+ * data.
+ *
+ * If the data must be byte-swapped, then it must be mutable. Otherwise,
+ * immutable or const data is allowed.
+ *
+ * Params:
+ *    enc = The assumed encoding of the text pipe.
+ *    Chain = The chain to assume the encoding for. This MUST have a dynamic
+ *            array type for its window, and the elements must be integral.
+ * Returns:
+ *    An appropriate iopipe that has a window of the appropriate character type
+ *    (`char`, `wchar`, or `dchar`) for the assumed encoding. The window will
+ *    be set up so its elements are properly byte-ordered for the compiled
+ *    platform.
+ */
+auto assumeEncoding(UTFType enc = UTFType.UTF8, Chain)(Chain c) if (isIopipe!Chain && isDynamicArray!(WindowType!Chain) && isIntegral!(ElementEncodingType!(WindowType!Chain)))
 {
-    static if(b == UTFType.UTF8 || b == UTFType.Unknown)
+    static if(enc == UTFType.UTF8 || enc == UTFType.Unknown)
         return c.arrayCastPipe!char;
-    else static if(b == UTFType.UTF16LE || b == UTFType.UTF32LE)
+    else static if(enc == UTFType.UTF16LE || enc == UTFType.UTF32LE)
     {
-        return c.arrayCastPipe!(CodeUnit!b).byteSwapper!true;
+        return c.arrayCastPipe!(CodeUnit!enc).byteSwapper!true;
     }
-    else static if(b == UTFType.UTF16BE || b == UTFType.UTF32BE)
+    else static if(enc == UTFType.UTF16BE || enc == UTFType.UTF32BE)
     {
-        return c.arrayCastPipe!(CodeUnit!b).byteSwapper!false;
+        return c.arrayCastPipe!(CodeUnit!enc).byteSwapper!false;
     }
     else
         static assert(0);
 }
 
-private struct ByLinePipe(Chain)
+unittest
+{
+    import std.algorithm : equal;
+    import core.bitop : bswap;
+    // standard char array, casted to ubyte (typical case)
+    ubyte[] str1 = ['h', 'e', 'l', 'l', 'o'];
+    
+    auto p1 = str1.assumeEncoding!(UTFType.UTF8);
+    static assert(is(WindowType!(typeof(p1)) == char[]));
+    assert("hello".equal(p1.window));
+
+    // build a byte-swapped array for "hello"
+    uint[] str2 = ['h', 'e', 'l', 'l', 'o'];
+    foreach(ref i; str2)
+        i = bswap(i);
+
+    // encoding should be utf32, in non-native endianness.
+    version(BigEndian)
+    {
+        enum encType = UTFType.UTF32LE;
+    }
+    else
+    {
+        enum encType = UTFType.UTF32BE;
+    }
+
+    auto p2 = str2.assumeEncoding!encType;
+    static assert(is(WindowType!(typeof(p2)) == dchar[]));
+    assert("hello".equal(p2.window));
+}
+
+private struct DelimitedTextPipe(Chain)
 {
     alias CodeUnitType = Unqual!(typeof(Chain.init.window[0]));
     private
     {
         Chain chain;
         size_t checked;
-        size_t _lines;
+        size_t _segments;
         bool endsWithDelim;
         CodeUnitType[dchar.sizeof / CodeUnitType.sizeof] delimElems;
 
@@ -285,7 +338,7 @@ byline_outer_1:
             {
                 auto w = chain.window;
                 immutable t = delimElems[0];
-                static if(isArray!(WindowType!(Chain)))
+                static if(isDynamicArray!(WindowType!(Chain)))
                 {
                     auto p = w.ptr + newChecked;
                     static if(CodeUnitType.sizeof == 1)
@@ -374,44 +427,77 @@ byline_outer_2:
         auto prevChecked = checked;
         if(checked != newChecked)
         {
-            ++_lines;
+            ++_segments;
             checked = newChecked;
         }
         return checked - prevChecked;
     }
 
-    size_t lines() { return _lines; }
+    size_t segments() { return _segments; }
 }
 
-auto byLine(Chain)(Chain c, dchar delim = '\n')
+/**
+ * Process a given text iopipe by a given code point delimeter. The only
+ * behavior that changes from the input pipe is that extensions to the window
+ * deliever exactly one more delimited segment of text.
+ *
+ * By default, the delimiter is `\n`, which makes an iopipe that delievers a
+ * line at a time.
+ *
+ * Params:
+ *    c = The input text iopipe. This must have a window whose elements are
+ *        valid character types.
+ *    delim = The code point with which to delimit the text. Each extension to
+ *        the iopipe will either end on this delimiter, or will be the last
+ *        segment in the pipe.
+ * Returns:
+ *    An iopipe that behaves as described above.
+ */
+auto delimitedText(Chain)(Chain c, dchar delim = '\n')
    if(isIopipe!Chain &&
-      is(Unqual!(ElementType!(WindowType!Chain)) == dchar))
+      isSomeChar!(ElementEncodingType!(WindowType!Chain)))
 {
     import std.traits: Unqual;
-    auto r = ByLinePipe!(Chain)(c);
+    auto result = DelimitedTextPipe!(Chain)(c);
     // set up the delimeter
-    static if(is(r.CodeUnitType == dchar))
+    static if(is(result.CodeUnitType == dchar))
     {
-        r.delimElems[0] = delim;
+        result.delimElems[0] = delim;
     }
     else
     {
         import std.utf: encode;
-        r.validDelimElems = cast(ubyte)encode(r.delimElems, delim);
-        r.skippableElems = 1; // need to be able to skip at least one element
-        foreach(x; r.delimElems[1 .. r.validDelimElems])
+        result.validDelimElems = cast(ubyte)encode(result.delimElems, delim);
+        result.skippableElems = 1; // need to be able to skip at least one element
+        foreach(x; result.delimElems[1 .. result.validDelimElems])
         {
-            if(x == r.delimElems[0])
+            if(x == result.delimElems[0])
                 break;
-            ++r.skippableElems;
+            ++result.skippableElems;
         }
     }
-    return r;
+    return result;
+}
+
+unittest
+{
+    auto p = "hello world, this is a test".delimitedText(' ');
+    p.extend;
+    assert(p.window == "hello ");
+    p.extend;
+    assert(p.window == "hello world, ");
+    p.extend;
+    assert(p.window == "hello world, this ");
+    assert(p.segments == 3);
+    assert(p.delimTrailer == 1);
+    p.process();
+    assert(p.segments == 6);
+    assert(p.delimTrailer == 0);
 }
 
 // same as a normal range, but we don't return the delimiter.
 // Note that the Chain MUST be a ByDelim iopipe.
-private struct ByLineNoDelimRange(Chain)
+private struct NoDelimRange(Chain)
 {
     Chain chain;
     ubyte delimElems;
@@ -425,11 +511,26 @@ private struct ByLineNoDelimRange(Chain)
     }
 }
 
-auto byLineRange(bool KeepDelimiter = false, Chain)(Chain c, dchar delim = '\n')
+/**
+ * Given a text iopipe, returns a range based on splitting the text by a given
+ * code point. This has the advantage over `delimitedText.asRange` in that the
+ * delimiter can be hidden.
+ *
+ * Params:
+ *     KeepDelimiter = If true, then the delimiter is included in each element
+ *        of the range (if present from the original iopipe).
+ *     c = The iopipe to range-ify.
+ *     delim = The dchar to use for delimiting.
+ * Returns:
+ *     An input range whose elements are the delimited text segments, with or
+ *     without delimiters as specified by the KeepDelimiter boolean.
+ */
+
+auto byDelimRange(bool KeepDelimiter = false, Chain)(Chain c, dchar delim = '\n')
    if(isIopipe!Chain &&
       is(Unqual!(ElementType!(WindowType!Chain)) == dchar))
 {
-    auto p = c.byLine(delim);
+    auto p = c.delimitedText(delim);
     static if(KeepDelimiter)
     {
         // just use standard input range adapter
@@ -437,7 +538,7 @@ auto byLineRange(bool KeepDelimiter = false, Chain)(Chain c, dchar delim = '\n')
     }
     else
     {
-        auto r = ByLineNoDelimRange!(typeof(p))(p);
+        auto r = NoDelimRange!(typeof(p))(p);
         // pre-fetch first line
         r.popFront();
         return r;
@@ -447,12 +548,12 @@ auto byLineRange(bool KeepDelimiter = false, Chain)(Chain c, dchar delim = '\n')
 unittest
 {
     import std.algorithm : equal;
-    assert("hello\nworld".byLineRange.equal(["hello", "world"]));
-    assert("hello\nworld".byLineRange!true.equal(["hello\n", "world"]));
-    assert("\nhello\nworld".byLineRange.equal(["", "hello", "world"]));
-    assert("\nhello\nworld".byLineRange!true.equal(["\n", "hello\n", "world"]));
-    assert("\nhello\nworld\n".byLineRange.equal(["", "hello", "world"]));
-    assert("\nhello\nworld\n".byLineRange!true.equal(["\n", "hello\n", "world\n"]));
+    assert("hello\nworld".byDelimRange.equal(["hello", "world"]));
+    assert("hello\nworld".byDelimRange!true.equal(["hello\n", "world"]));
+    assert("\nhello\nworld".byDelimRange.equal(["", "hello", "world"]));
+    assert("\nhello\nworld".byDelimRange!true.equal(["\n", "hello\n", "world"]));
+    assert("\nhello\nworld\n".byDelimRange.equal(["", "hello", "world"]));
+    assert("\nhello\nworld\n".byDelimRange!true.equal(["\n", "hello\n", "world\n"]));
 }
 
 static struct TextOutput(Chain)
@@ -570,6 +671,21 @@ static struct TextOutput(Chain)
     }
 }
 
+/**
+ * Take a text-based iopipe and turn it into an output range of `dchar`. Note
+ * that the iopipe must be an output iopipe, not an input one. In other words,
+ * a `textOutput` result doesn't output its input, it uses its input as a place
+ * to deposit data.
+ *
+ * The given iopipe window will be written to, then data that is ready to be
+ * output is released. It is expected that the iopipe will use this mechanism
+ * to actually know which data to output. See the example for more information.
+ *
+ * Params:
+ *     c = The output iopipe that can be used to put dchars into.
+ * Returns:
+ *     An output range that can accept all forms of text data for output.
+ */
 auto textOutput(Chain)(Chain c)
 {
     // create an output range of dchar/code units around c. We assume releasing and
@@ -578,41 +694,99 @@ auto textOutput(Chain)(Chain c)
     return TextOutput!Chain(c);
 }
 
-auto encodeText(UTFType enc, Chain)(Chain c)
+///
+unittest
 {
-    static assert(is(typeof(c.window[0]) == CodeUnit!enc));
+    import std.range : put;
+    // use a writeable buffer as output.  Note that extending is not possible.
+    char[256] buffer;
+    auto oRange = buffer[].textOutput;
+    put(oRange, "hello, world");
 
-    static if(enc == UTFType.UTF8)
-    {
-        return c.arrayCastPipe!ubyte;
-    }
-    else static if(enc == UTFType.UTF16LE || enc == UTFType.UTF32LE)
-    {
-        return c.byteSwapper!(true).arrayCastPipe!ubyte;
-    }
-    else static if(enc == UTFType.UTF16BE || enc == UTFType.UTF32BE)
-    {
-        return c.byteSwapper!(false).arrayCastPipe!ubyte;
-    }
-    else
-        assert(0);
+    // we are cheating a bit and know the internals of the output range struct.
+    assert(buffer[0 .. $-oRange.chain.window.length] == "hello, world");
 }
 
-template textConverter(Char, bool ensureBOM = false, Chain)
+/**
+ * Convert iopipe of one text type into an iopipe for another type. Performs
+ * conversions at the code-point level. If specified, the resulting iopipe will
+ * ensure there is a BOM at the beginning of the iopipe. This is useful if
+ * writing to storage.
+ *
+ * If no conversion is necessary, and no BOM is required, the original iopipe
+ * is returned.
+ *
+ * Params:
+ *     Char = The desired character type in the resulting iopipe. Must be one
+ *           of char, wchar, or dchar.
+ *     ensureBOM = If true, the resulting iopipe will ALWAYS have a byte order
+ *           mark at the beginning of the stream. At the moment this is
+ *           accomplished by copying all the data from the original iopipe to
+ *           the new one. A better mechanism is being worked on.
+ *     chain = The source iopipe.
+ * Returns:
+ *     An iopipe which fulfills the given requirements.
+ *
+ */
+auto convertText(Char = char, bool ensureBOM = false, Chain)(Chain chain) if (isSomeChar!Char)
+{
+    static if(!ensureBOM && is(ElementEncodingType!(WindowType!(Chain)) == Char))
+        return chain;
+    else
+        return chain.textConverter!ensureBOM.bufd!Char;
+}
+
+unittest
+{
+    // test converting char[] to wchar[]
+    auto inpipe = "hello";
+    immutable(ushort)[] expected = cast(immutable(ushort)[])"\ufeffhello"w;
+    auto wpipe = inpipe.convertText!wchar;
+    static assert(is(WindowType!(typeof(wpipe)) == wchar[]));
+
+    wpipe.extend(100);// fill the pipe
+    assert(wpipe.window.length == 5);
+    assert(cast(ushort[])wpipe.window == expected[1 .. $]);
+
+    // ensure the BOM
+    auto wpipe2 = inpipe.convertText!(wchar, true);
+    wpipe2.extend(100);
+    assert(wpipe2.window.length == 6);
+    assert(cast(ushort[])wpipe2.window == expected);
+}
+
+
+/**
+ * A converter to allow conversion into any other type of text.
+ *
+ * The converter does 2 things. First and foremost, it adds a read function
+ * that allows conversion into any other width of text. The read function
+ * converts as much text as possible into the given format, extending the base
+ * iopipe as necessary.
+ *
+ * The second thing that it does is potentially add a BOM character to the
+ * beginning of the text. It was decided to add this here, since you are likely
+ * already copying data from one iopipe into another. However, in future
+ * versions, this capability may go away, as we can do this elsewhere with less
+ * copying. So expect this API to change.
+ */
+template textConverter(bool ensureBOM = false, Chain)
 {
     struct TextConverter
     {
         Chain chain;
         static if(ensureBOM)
+        {
             bool atBeginning = true;
 
-        auto release(size_t elems)
-        {
-            atBeginning = atBeginning && elems == 0;
-            return chain.release(elems);
+            auto release(size_t elems)
+            {
+                atBeginning = atBeginning && elems == 0;
+                return chain.release(elems);
+            }
         }
 
-        size_t read(Char[] buf)
+        size_t read(Char)(Char[] buf)
         {
             alias SrcChar = ElementEncodingType!(WindowType!(Chain));
             if(buf.length == 0)
@@ -750,6 +924,61 @@ template textConverter(Char, bool ensureBOM = false, Chain)
 
     auto textConverter(Chain c)
     {
-        return TextConverter(c).bufd!(Char);
+        return TextConverter(c);
     }
+}
+
+/**
+ * Encode a given text iopipe into the desired encoding type. The resulting
+ * iopipe's element type is ubyte, with the bytes ready to be written to a
+ * storage device.
+ *
+ * Params:
+ *     enc = The encoding type to use.
+ *     c = The source iopipe. Must be an iopipe where the window type's element
+ *          type is text based.
+ * Returns:
+ *     A ubyte iopipe that represents the encoded version of the input iopipe
+ *     based on the provided encoding.
+ */
+
+auto encodeText(UTFType enc = UTFType.UTF8, Chain)(Chain c)
+{
+    auto converted = c.convertText!(CodeUnit!enc);
+
+    static if(enc == UTFType.UTF8)
+    {
+        return converted.arrayCastPipe!ubyte;
+    }
+    else static if(enc == UTFType.UTF16LE || enc == UTFType.UTF32LE)
+    {
+        return converted.byteSwapper!(true).arrayCastPipe!ubyte;
+    }
+    else static if(enc == UTFType.UTF16BE || enc == UTFType.UTF32BE)
+    {
+        return converted.byteSwapper!(false).arrayCastPipe!ubyte;
+    }
+    else
+        assert(0);
+}
+
+unittest
+{
+    import core.bitop : bswap;
+    // ensure that we properly byteswap.
+    auto input = "hello";
+
+    version(BigEndian)
+        enum encodingType = UTFType.UTF32LE;
+    else
+        enum encodingType = UTFType.UTF32BE;
+
+    auto testme = input.encodeText!encodingType;
+    static assert(is(WindowType!(typeof(testme)) == ubyte[]));
+
+    uint[] expected = cast(uint[])"hello"d.dup;
+    foreach(ref v; expected) v = bswap(v);
+
+    testme.extend(100);
+    assert(testme.window == cast(ubyte[])expected);
 }
