@@ -44,6 +44,8 @@ struct GCNoPointerAllocator
 
 unittest
 {
+    import std.experimental.allocator.common: stateSize;
+    static assert(!stateSize!GCNoPointerAllocator);
     import core.memory: GC;
     auto arr = GCNoPointerAllocator.instance.allocate(100);
     assert((GC.getAttr(arr.ptr) & GC.BlkAttr.NO_SCAN) != 0);
@@ -58,11 +60,34 @@ unittest
  */
 struct BufferManager(T, Allocator = GCNoPointerAllocator)
 {
+    import std.experimental.allocator.common: stateSize;
+    import std.experimental.allocator: IAllocator, theAllocator;
+
     /**
      * Construct a buffer manager with a given allocator.
      */
-    this(Allocator allocator) {
-        theAllocator = allocator;
+    static if (stateSize!Allocator)
+    {
+        private Allocator _allocator;
+        static if (is(Allocator == IAllocator))
+        {
+            private @property Allocator allocator()
+            {
+                if (_allocator is null) _allocator = theAllocator;
+                return _allocator;
+            }
+        }
+        else
+        {
+            private alias allocator = _allocator;
+        }
+        this(Allocator alloc) {
+            _allocator = alloc;
+        }
+    }
+    else // no state size
+    {
+        private alias allocator = Allocator.instance;
     }
 
     /**
@@ -154,7 +179,7 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator)
             if(buffer.ptr)
             {
                 void[] buftmp = cast(void[])buffer;
-                if(theAllocator.expand(buftmp, (request - (buffer.length - valid)) * T.sizeof))
+                if(allocator.expand(buftmp, (request - (buffer.length - valid)) * T.sizeof))
                 {
                     buffer = cast(T[])buftmp;
                     if(validElems == 0)
@@ -176,8 +201,8 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator)
         // grow by at least 1.4
         auto newLen = max(validElems + request, oldLen * 14 / 10, INITIAL_LENGTH);
         static if(hasMember!(Allocator, "goodAllocSize"))
-            newLen = theAllocator.goodAllocSize(newLen * T.sizeof) / T.sizeof;
-        auto newbuf = cast(T[])theAllocator.allocate(newLen * T.sizeof);
+            newLen = allocator.goodAllocSize(newLen * T.sizeof) / T.sizeof;
+        auto newbuf = cast(T[])allocator.allocate(newLen * T.sizeof);
         if(!newbuf.ptr)
             return 0;
         if (validElems > 0) {
@@ -188,13 +213,12 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator)
 
         // TODO: should we do this? using a GC allocator this is unsafe.
         static if(hasMember!(Allocator, "deallocate"))
-            theAllocator.deallocate(buffer);
+            allocator.deallocate(buffer);
         buffer = newbuf;
 
         return request;
     }
 private:
-    Allocator theAllocator;
     enum size_t INITIAL_LENGTH = 128;
     T[] buffer;
     size_t valid;
