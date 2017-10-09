@@ -40,7 +40,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
         {
         case UTFType.UTF8:
             // all other encodings are wider. Need to use output range
-            input.assumeEncoding!iEnc.doConvert!(UTFType.UTF8);
+            input.assumeText!iEnc.doConvert!(UTFType.UTF8);
             break;
         case UTFType.UTF16LE:
             // check for just changing byte order
@@ -52,7 +52,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             else
             {
                 // converting widths
-                input.assumeEncoding!iEnc.doConvert!(UTFType.UTF16LE);
+                input.assumeText!iEnc.doConvert!(UTFType.UTF16LE);
             }
             break;
         case UTFType.UTF16BE:
@@ -65,7 +65,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             else
             {
                 // converting widths
-                input.assumeEncoding!iEnc.doConvert!(UTFType.UTF16BE);
+                input.assumeText!iEnc.doConvert!(UTFType.UTF16BE);
             }
             break;
         case UTFType.UTF32LE:
@@ -78,7 +78,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             else
             {
                 // converting widths
-                input.assumeEncoding!iEnc.doConvert!(UTFType.UTF32LE);
+                input.assumeText!iEnc.doConvert!(UTFType.UTF32LE);
             }
             break;
         case UTFType.UTF32BE:
@@ -91,7 +91,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             else
             {
                 // converting widths
-                input.assumeEncoding!iEnc.doConvert!(UTFType.UTF32BE);
+                input.assumeText!iEnc.doConvert!(UTFType.UTF32BE);
             }
             break;
         default:

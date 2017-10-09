@@ -244,7 +244,7 @@ unittest
  *    be set up so its elements are properly byte-ordered for the compiled
  *    platform.
  */
-auto assumeEncoding(UTFType enc = UTFType.UTF8, Chain)(Chain c) if (isIopipe!Chain && isDynamicArray!(WindowType!Chain) && isIntegral!(ElementEncodingType!(WindowType!Chain)))
+auto assumeText(UTFType enc = UTFType.UTF8, Chain)(Chain c) if (isIopipe!Chain && isDynamicArray!(WindowType!Chain) && isIntegral!(ElementEncodingType!(WindowType!Chain)))
 {
     static if(enc == UTFType.UTF8 || enc == UTFType.Unknown)
         return c.arrayCastPipe!char;
@@ -267,7 +267,7 @@ unittest
     // standard char array, casted to ubyte (typical case)
     ubyte[] str1 = ['h', 'e', 'l', 'l', 'o'];
     
-    auto p1 = str1.assumeEncoding!(UTFType.UTF8);
+    auto p1 = str1.assumeText!(UTFType.UTF8);
     static assert(is(WindowType!(typeof(p1)) == char[]));
     assert("hello".equal(p1.window));
 
@@ -286,7 +286,7 @@ unittest
         enum encType = UTFType.UTF32BE;
     }
 
-    auto p2 = str2.assumeEncoding!encType;
+    auto p2 = str2.assumeText!encType;
     static assert(is(WindowType!(typeof(p2)) == dchar[]));
     assert("hello".equal(p2.window));
 }
@@ -441,9 +441,6 @@ byline_outer_2:
  * behavior that changes from the input pipe is that extensions to the window
  * deliever exactly one more delimited segment of text.
  *
- * By default, the delimiter is `\n`, which makes an iopipe that delievers a
- * line at a time.
- *
  * Params:
  *    c = The input text iopipe. This must have a window whose elements are
  *        valid character types.
@@ -495,6 +492,21 @@ unittest
     assert(p.delimTrailer == 0);
 }
 
+/**
+ * A convenience wrapper for delimitedText that uses the newline character '\n'
+ * to delimit the segments. Equivalent to `delimitedText(c, '\n');`
+ *
+ * Params:
+ *    c = The input text iopipe. This must have a window whose elements are
+ *        valid character types.
+ * Returns:
+ *    A line delimited iopipe.
+ */
+auto byLine(Chain)(Chain c)
+{
+    return delimitedText(c, '\n');
+}
+
 // same as a normal range, but we don't return the delimiter.
 // Note that the Chain MUST be a ByDelim iopipe.
 private struct NoDelimRange(Chain)
@@ -526,7 +538,7 @@ private struct NoDelimRange(Chain)
  *     without delimiters as specified by the KeepDelimiter boolean.
  */
 
-auto byDelimRange(bool KeepDelimiter = false, Chain)(Chain c, dchar delim = '\n')
+auto byDelimRange(bool KeepDelimiter = false, Chain)(Chain c, dchar delim)
    if(isIopipe!Chain &&
       is(Unqual!(ElementType!(WindowType!Chain)) == dchar))
 {
@@ -545,15 +557,33 @@ auto byDelimRange(bool KeepDelimiter = false, Chain)(Chain c, dchar delim = '\n'
     }
 }
 
+/**
+ * Convenience wrapper for byDelimRange that uses the newline character '\n' as
+ * the delimiter. Equivalent to `byDelimRange!(KeepDelimiter)(c, '\n');
+ *
+ * Params:
+ *     KeepDelimiter = If true, then the delimiter is included in each element
+ *        of the range (if present from the original iopipe).
+ *     c = The iopipe to range-ify.
+ * Returns:
+ *     An input range whose elements are lines of text from the input iopipe,
+ *     with or without delimiters as specified by the KeepDelimiter boolean.
+ */
+
+auto byLineRange(bool KeepDelimiter = false, Chain)(Chain c)
+{
+    return byDelimRange!(KeepDelimiter)(c, '\n');
+}
+
 unittest
 {
     import std.algorithm : equal;
-    assert("hello\nworld".byDelimRange.equal(["hello", "world"]));
-    assert("hello\nworld".byDelimRange!true.equal(["hello\n", "world"]));
-    assert("\nhello\nworld".byDelimRange.equal(["", "hello", "world"]));
-    assert("\nhello\nworld".byDelimRange!true.equal(["\n", "hello\n", "world"]));
-    assert("\nhello\nworld\n".byDelimRange.equal(["", "hello", "world"]));
-    assert("\nhello\nworld\n".byDelimRange!true.equal(["\n", "hello\n", "world\n"]));
+    assert("hello\nworld".byLineRange.equal(["hello", "world"]));
+    assert("hello\nworld".byLineRange!true.equal(["hello\n", "world"]));
+    assert("\nhello\nworld".byLineRange.equal(["", "hello", "world"]));
+    assert("\nhello\nworld".byLineRange!true.equal(["\n", "hello\n", "world"]));
+    assert("\nhello\nworld\n".byLineRange.equal(["", "hello", "world"]));
+    assert("\nhello\nworld\n".byLineRange!true.equal(["\n", "hello\n", "world\n"]));
 }
 
 static struct TextOutput(Chain)
@@ -698,13 +728,26 @@ auto textOutput(Chain)(Chain c)
 unittest
 {
     import std.range : put;
-    // use a writeable buffer as output.  Note that extending is not possible.
+    // use a writeable buffer as output.
     char[256] buffer;
-    auto oRange = buffer[].textOutput;
+    size_t written = 0;
+
+    // this helps us see how many chars are written.
+    struct LocalIopipe
+    {
+        char[] window;
+        void release(size_t elems)
+        {
+            window.release(elems);
+            written += elems;
+        }
+        size_t extend(size_t elems) { return 0; }
+    }
+    auto oRange = LocalIopipe(buffer[]).textOutput;
     put(oRange, "hello, world");
 
-    // we are cheating a bit and know the internals of the output range struct.
-    assert(buffer[0 .. $-oRange.chain.window.length] == "hello, world");
+    // written is updated whenever the iopipe is released
+    assert(buffer[0 .. written] == "hello, world");
 }
 
 /**
@@ -941,7 +984,6 @@ template textConverter(bool ensureBOM = false, Chain)
  *     A ubyte iopipe that represents the encoded version of the input iopipe
  *     based on the provided encoding.
  */
-
 auto encodeText(UTFType enc = UTFType.UTF8, Chain)(Chain c)
 {
     auto converted = c.convertText!(CodeUnit!enc);
