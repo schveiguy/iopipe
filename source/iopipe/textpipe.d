@@ -1057,7 +1057,8 @@ auto ref runWithEncoding(alias func, bool UnknownIsUTF8 = true, Chain, Args...)(
     auto bom = c.window.detectBOM;
     final switch(bom)
     {
-        // TODO: static foreach should work here, but gives "unreachable statement"
+        // BUG: static foreach should work, but doesn't, waiting for issue 17807 to
+        // make it into a release.
         /*static*/ foreach(enc; EnumMembers!UTFType)
         {
         case enc:
