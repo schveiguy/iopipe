@@ -25,7 +25,6 @@ void main(string[] args)
 {
     if(args.length > 1 && args[1] == "-nooutput")
         doOutput = false;
-    auto dev = openDev(0).bufd;
     openDev(0).bufd.runWithEncoding!processLines;
     stdout.flush();
 }
