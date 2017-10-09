@@ -36,10 +36,10 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
     }
     else
     {
-        switch(oEnc)
+        final switch(oEnc)
         {
         case UTFType.UTF8:
-            // all other encodings are wider. Need to use output range
+            // all other encodings are wider. Need to use converter.
             input.assumeText!iEnc.doConvert!(UTFType.UTF8);
             break;
         case UTFType.UTF16LE:
@@ -94,7 +94,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
                 input.assumeText!iEnc.doConvert!(UTFType.UTF32BE);
             }
             break;
-        default:
+        case UTFType.Unknown:
             assert(0);
         }
     }
@@ -103,27 +103,5 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
 void main(string[] args)
 {
     // convert all data from input stream to given format
-    auto dev = new IODev(0).bufd;
-    dev.ensureElems(4);
-    switch(dev.window.detectBOM)
-    {
-    case UTFType.Unknown:
-    case UTFType.UTF8:
-        dev.translate!(UTFType.UTF8)(args[1]);
-        break;
-    case UTFType.UTF16LE:
-        dev.translate!(UTFType.UTF16LE)(args[1]);
-        break;
-    case UTFType.UTF16BE:
-        dev.translate!(UTFType.UTF16BE)(args[1]);
-        break;
-    case UTFType.UTF32LE:
-        dev.translate!(UTFType.UTF32LE)(args[1]);
-        break;
-    case UTFType.UTF32BE:
-        dev.translate!(UTFType.UTF32BE)(args[1]);
-        break;
-    default:
-        assert(0);
-    }
+    runWithEncoding!(translate)(openDev(0).bufd, args[1]);
 }

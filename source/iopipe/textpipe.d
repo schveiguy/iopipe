@@ -1024,3 +1024,47 @@ unittest
     testme.extend(100);
     assert(testme.window == cast(ubyte[])expected);
 }
+
+/**
+ * Given a template function, and an input chain of encoded text data, this
+ * function will detect the encoding of the input chain, and convert that
+ * runtime value into a compile-time parameter to the given function. Useful
+ * for writing code that needs to handle all the forms of text encoding.
+ *
+ * Use the encoding type as a parameter to assumeText to get an iopipe of
+ * `char`, `wchar`, or `dchar` elements for processing.
+ *
+ * Note that func must return the same type no matter how it's called, as the
+ * BOM detection and calling is done at runtime. Given that there are 5
+ * different encodings that iopipe handles, you will have 6 instantiations of
+ * the function, no matter whether the input contains that encoding or not.
+ *
+ * Params:
+ *     func - The template function to call.
+ *     UnknownIsUTF8 - If true, then an undetected encoding will be passed as
+ *          UTF8 to your function. Otherwise, the Unknown encoding will be passed.
+ *     c - The iopipe input chain that should have encoded text in it.
+ *     args - Any optional args to pass to the function.
+ * Returns:
+ *     The return value from func.
+ */
+auto ref runWithEncoding(alias func, bool UnknownIsUTF8 = true, Chain, Args...)(Chain c, auto ref Args args)
+    if(isIopipe!Chain && is(typeof(detectBOM(c.window))))
+{
+    // first, detect the encoding
+    c.ensureElems(4);
+    import std.traits: EnumMembers;
+    auto bom = c.window.detectBOM;
+    final switch(bom)
+    {
+        // TODO: static foreach should work here, but gives "unreachable statement"
+        /*static*/ foreach(enc; EnumMembers!UTFType)
+        {
+        case enc:
+            static if(UnknownIsUTF8 && enc == UTFType.Unknown)
+                goto case UTFType.UTF8;
+            else
+                return func!(enc)(c, args);
+        }
+    }
+}
