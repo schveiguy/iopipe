@@ -1,0 +1,60 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"/>
+<title>Function runWithEncoding</title>
+<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
+<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
+<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script></head><body onload="setupDdox();"><nav id="main-nav"><noscript><p style="color: red">The search functionality needs JavaScript enabled</p></noscript><div id="symbolSearchPane" style="display: none"><form action="#" method="GET">
+<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module "><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module selected"><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Function runWithEncoding</h1><p>Given a template function, and an input chain of encoded text data, this
+ function will detect the encoding of the input chain, and convert that
+ runtime value into a compile-time parameter to the given function. Useful
+ for writing code that needs to handle all the forms of text encoding.
+</p><div class="prototype"><code class="lang-d"><div class="single-prototype">
+<span class="kwd">auto ref </span><span class="kwd">auto</span> <span class="pln">runWithEncoding</span>(alias func, <span class="typ">bool</span> UnknownIsUTF8<span class="pln"> </span><span class="pun">= </span><span class="kwd">true</span>, Chain, Args...)
+<span class="pun">(</span>
+<br/>
+&nbsp;&nbsp;<span class="typ">Chain</span> <span class="pln">c</span><span class="pun">,</span>
+<br/>
+&nbsp;&nbsp;<span class="kwd">auto ref </span><span class="typ">Args</span> <span class="pln">args</span>
+<br/>
+<span class="pun">)</span>
+<br/>
+<span class="kwd">if</span> <span class="pun">(</span><span class="pln">isIopipe</span><span class="pun">!</span><span class="typ">Chain </span><span class="pun">&amp;&amp; </span><span class="kwd">is</span><span class="pun">(</span><span class="kwd">typeof</span><span class="pun">(</span><span class="pln">detectBOM</span><span class="pun">(</span><span class="pln">c<wbr/></span><span class="pun">.</span><span class="pln">window</span><span class="pun">)))</span><span class="pun">);</span></div></code></div><section><p>Use the encoding type as a parameter to assumeText to get an iopipe of
+ <code class="lang-d"><span class="typ">char</span></code>, <code class="lang-d"><span class="typ">wchar</span></code>, or <code class="lang-d"><span class="typ">dchar</span></code> elements for processing.
+</p>
+
+<p> Note that func must return the same type no matter how it's called, as the
+ BOM detection and calling is done at runtime. Given that there are 5
+ different encodings that iopipe handles, you will have 6 instantiations of
+ the function, no matter whether the input contains that encoding or not.
+</p>
+
+<p> The second version assumes that the function doesn't care what the encoding
+ is, but just wants to get a text iopipe with the appropriate encoding
+ already handled. In this case, the function will receive a chain of <code class="lang-d"><span class="typ">char</span></code>,
+ <code class="lang-d"><span class="typ">wchar</span></code>, or <code class="lang-d"><span class="typ">dchar</span></code> window elements.
+</p>
+</section>
+
+<section><h2>Parameters</h2>
+<table><col class="caption"><tr><th>Name</th><th>Description</th></tr>
+<tr><td id="func">func</td><td> The template function to call.</td></tr>
+<tr><td id="UnknownIsUTF8">UnknownIsUTF8</td><td> If true, then an undetected encoding will be passed as
+          UTF8 to your function. Otherwise, the Unknown encoding will be passed.</td></tr>
+<tr><td id="c">c</td><td> The iopipe input chain that should have encoded text in it.</td></tr>
+<tr><td id="args">args</td><td> Any optional args to pass to the function.</td></tr>
+</table>
+</section>
+<section><h2>Returns</h2>
+<p>The return value from func.
+</p>
+</section>
+
+<footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer
+</p>
+</td></tr><tr><th>Copyright</th><td><p>Copyright Steven Schveighoffer 2011-.
+</p>
+</td></tr><tr><th>License</th><td><p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+           at http://www.boost.org/LICENSE_1_0.txt)
+</p>
+</td></tr></table><p class="faint">Generated using the DDOX documentation generator</p></footer></div></body></html>

@@ -1,7 +1,9 @@
 /**
+  Core functionality for iopipe. Defines the base types for manipulating and
+  processing data.
 Copyright: Copyright Steven Schveighoffer 2011-.
-License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy at
-           http://www.boost.org/LICENSE_1_0.txt)
+License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+           at http://www.boost.org/LICENSE_1_0.txt)
 Authors:   Steven Schveighoffer
  */
 module iopipe.bufpipe;
@@ -50,7 +52,7 @@ struct SimplePipe(Chain, size_t extendElementsDefault = 1) if(isIopipe!Chain)
      * up to the implementation of the pipe to determine the optimal number of
      * elements to add.
      *
-     * Params: elements - Number of elements requested.
+     * Params: elements = Number of elements requested.
      * Returns: The number of elements added. This can be less than or more
      *          than the parameter, but will only be 0 when no more elements
      *          can be added. This signifies EOF.
@@ -93,7 +95,7 @@ struct SimplePipe(Chain, size_t extendElementsDefault = 1) if(isIopipe!Chain)
      * calling this, make sure to update any tracking indexes for the window
      * that you are maintaining.
      *
-     * Params: elements - The number of elements to release.
+     * Params: elements = The number of elements to release.
      */
     void release(size_t elements)
     {
@@ -278,9 +280,9 @@ else
  * Note, the width of the elements in the iopipe's window must be 2 or 4 bytes
  * wide, and mutable.
  *
- * Params: littleEndian - true if the data arrives in little endian mode, false
+ * Params: littleEndian = true if the data arrives in little endian mode, false
  *             if in big endian mode.
- *         c - Source pipe chain for the byte swapper.
+ *         c = Source pipe chain for the byte swapper.
  * Returns: If endianness of the source matches platform, this returns c,
  *          otherwise, it returns a byte swapping iopipe wrapper that performs
  *          the byte swaps.
@@ -410,8 +412,8 @@ private struct ArrayCastPipe(Chain, T)
  *       element type must be a multiple of, or divide evenly into, the
  *       original array.
  *
- * Params: T - Element type for new pipe chain window
- *         c - Source pipe chain to use for new chain.
+ * Params: T = Element type for new pipe chain window
+ *         c = Source pipe chain to use for new chain.
  *
  * Returns: New pipe chain with new array type.
  */
@@ -448,8 +450,8 @@ unittest
  * This is useful if you need a certain number of elements in the pipe before
  * you can process any more data.
  *
- * Params: chain - The pipe to work on.
- *         elems - The number of elements to ensure are in the window.
+ * Params: chain = The pipe to work on.
+ *         elems = The number of elements to ensure are in the window.
  * Returns: The resulting number of elements in the window. This may be less
  *          than the requested elements if the pipe ran out of data.
  */
@@ -517,11 +519,11 @@ private struct BufferedInputSource(T, Allocator, Source, size_t optimalReadSize)
 /**
  * Create a buffer to manage the data from the given source, and wrap into an iopipe.
  *
- * Params: T - The type of element to allocate with the allocator
- *         Allocator - The allocator to use for managing the buffer
- *         Source - The type of the input stream. This must have a function
+ * Params: T = The type of element to allocate with the allocator
+ *         Allocator = The allocator to use for managing the buffer
+ *         Source = The type of the input stream. This must have a function
  *         `read` that can read into the buffer's window.
- *         dev - The input stream to use. If not specified, then a NullDev source is assumed.
+ *         dev = The input stream to use. If not specified, then a NullDev source is assumed.
  *
  * Returns: An iopipe that uses the given buffer to read data from the given device source.
  */
@@ -617,8 +619,8 @@ private struct OutputPipe(Chain, Sink)
  * The returned iopipe has a function "flush" that will extend a chunk of data
  * and then release it immediately.
  *
- * Params: c - The input data to write to the stream.
- *         dev - The output stream to write data to. This must have a function
+ * Params: c = The input data to write to the stream.
+ *         dev = The output stream to write data to. This must have a function
  *               `write` that can write a c.window.
  *
  * Returns: An iopipe that gives a view of the written data. Note that you
@@ -657,7 +659,7 @@ unittest
  * Process a given iopipe chain until it has reached EOF. This is accomplished
  * by extending and releasing continuously until extend returns 0.
  *
- * Params: c - The iopipe to process
+ * Params: c = The iopipe to process
  * Returns: The number of elements processed.
  */
 size_t process(Chain)(auto ref Chain c)
@@ -697,8 +699,8 @@ private struct IoPipeRange(size_t extendRequestSize, Chain)
  * Note that the function may call extend once before returning, depending on
  * whether there is any data present or not.
  *
- * Params: extendRequestSize - The value to pass to c.extend when calling popFront
- *         c - The chain to use as backing for this range.
+ * Params: extendRequestSize = The value to pass to c.extend when calling popFront
+ *         c = The chain to use as backing for this range.
  */
 auto asInputRange(size_t extendRequestSize = 0, Chain)(Chain c)// if(isIopipe!Chain)
 {

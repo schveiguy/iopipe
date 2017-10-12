@@ -1,0 +1,44 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"/>
+<title>Function bufd</title>
+<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
+<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
+<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script></head><body onload="setupDdox();"><nav id="main-nav"><noscript><p style="color: red">The search functionality needs JavaScript enabled</p></noscript><div id="symbolSearchPane" style="display: none"><form action="#" method="GET">
+<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module selected"><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module "><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module "><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Function bufd</h1><p>Create a buffer to manage the data from the given source, and wrap into an iopipe.
+</p><div class="prototype"><code class="lang-d"><div class="single-prototype">
+<span class="kwd">auto </span><span class="kwd">auto</span> <span class="pln">bufd</span>(T, Allocator, <span class="typ">ulong</span> optimalReadSize<span class="pln"> </span><span class="pun">= </span><span class="lit">8 </span><span class="pun">* </span><span class="lit">1024 </span><span class="pun">/ </span><span class="pln">T<wbr/></span><span class="pun">.</span><span class="pln">sizeof</span>, Source)
+<span class="pun">(</span>
+<br/>
+&nbsp;&nbsp;<span class="typ">Source</span> <span class="pln">dev</span>
+<br/>
+<span class="pun">)</span>
+<br/>
+<span class="kwd">if</span> <span class="pun">(</span><span class="pln">hasMember</span><span class="pun">!(</span><span class="typ">Source</span><span class="pun">, </span><span class="str">"read"</span><span class="pun">) &amp;&amp; </span><span class="kwd">is</span><span class="pun">(</span><span class="kwd">typeof</span><span class="pun">(</span><span class="pln">dev<wbr/></span><span class="pun">.</span><span class="pln">read</span><span class="pun">(</span><span class="pln">T</span><span class="pun">[]<wbr/>.</span><span class="pln">init</span><span class="pun">)) == </span><span class="pln">size_t</span><span class="pun">)</span><span class="pun">);</span>
+<br/>
+<br/>
+<span class="kwd">auto </span><span class="kwd">auto</span> <span class="pln">bufd(T, Allocator, <span class="typ">ulong</span> optimalReadSize<span class="pln"> </span><span class="pun">= </span><span class="lit">8 </span><span class="pun">* </span><span class="lit">1024 </span><span class="pun">/ </span><span class="pln">T<wbr/></span><span class="pun">.</span><span class="pln">sizeof</span>)
+<span class="pun">()</span><span class="pun">;</span></div></code></div><section></section>
+
+<section><h2>Parameters</h2>
+<table><col class="caption"><tr><th>Name</th><th>Description</th></tr>
+<tr><td id="T">T</td><td> The type of element to allocate with the allocator</td></tr>
+<tr><td id="Allocator">Allocator</td><td> The allocator to use for managing the buffer</td></tr>
+<tr><td id="Source">Source</td><td> The type of the input stream. This must have a function
+         <code class="lang-d"><span class="pln">read</span></code> that can read into the buffer's window.</td></tr>
+<tr><td id="dev">dev</td><td> The input stream to use. If not specified, then a NullDev source is assumed.</td></tr>
+</table>
+</section>
+<section><h2>Returns</h2>
+<p>An iopipe that uses the given buffer to read data from the given device source.
+</p>
+</section>
+
+<footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer
+</p>
+</td></tr><tr><th>Copyright</th><td><p>Copyright Steven Schveighoffer 2011-.
+</p>
+</td></tr><tr><th>License</th><td><p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+           at http://www.boost.org/LICENSE_1_0.txt)
+</p>
+</td></tr></table><p class="faint">Generated using the DDOX documentation generator</p></footer></div></body></html>

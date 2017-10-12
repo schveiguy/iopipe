@@ -1,7 +1,9 @@
 /**
+  Compression/decompression with iopipes.
+
 Copyright: Copyright Steven Schveighoffer 2017.
-License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy at
-           http://www.boost.org/LICENSE_1_0.txt)
+License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+           at http://www.boost.org/LICENSE_1_0.txt)
 Authors:   Steven Schveighoffer
  */
 module iopipe.zip;
@@ -9,10 +11,16 @@ import iopipe.traits;
 import iopipe.buffer;
 import etc.c.zlib;
 
+/**
+ * Enum for specifying the desired or expected compression format.
+ */
 enum CompressionFormat
 {
+    /// GZIP format
     gzip,
+    /// Deflate (zip) format
     deflate,
+    /// Auto-detect the format by reading the data (unzip only)
     determineFromData
 }
 
@@ -219,9 +227,9 @@ private struct UnzipSrc(Chain)
  * This is the source that `unzip` uses to decompress.
  *
  * Params:
- *     c - The input iopipe that provides the compressed data. The window type
+ *     c = The input iopipe that provides the compressed data. The window type
  *         MUST be implicitly convertable to an array of const ubytes.
- *     format - The specified format of the data, leave the default to autodetect.
+ *     format = The specified format of the data, leave the default to autodetect.
  * Returns:
  *     An input stream whose `read` method decompresses the input iopipe into
  *     the given buffer.
@@ -240,9 +248,9 @@ auto unzipSrc(Chain)(Chain c, CompressionFormat format = CompressionFormat.deter
  * This is the source that `zip` uses to compress data.
  *
  * Params:
- *    c - The input iopipe that provides the data to compress. The window type
+ *    c = The input iopipe that provides the data to compress. The window type
  *        MUST be implicitly convertable to an array of const ubytes.
- *    format - The specified format of the compressed data.
+ *    format = The specified format of the compressed data.
  * Returns:
  *    An input stream whose `read` method compresses the input iopipe data into
  *    the given buffer.
@@ -261,10 +269,10 @@ auto zipSrc(Chain)(Chain c, CompressionFormat format = CompressionFormat.gzip)
  * created to hold it.
  *
  * Params:
- *     Allocator - The allocator to use for buffering the data.
- *     c - The input iopipe that provides the compressed data. The window type
+ *     Allocator = The allocator to use for buffering the data.
+ *     c = The input iopipe that provides the compressed data. The window type
  *         MUST be implicitly convertable to an array of const ubytes.
- *     format - The format of the input iopipe compressed data. Leave as
+ *     format = The format of the input iopipe compressed data. Leave as
  *     default to detect from the data itself.
  * Returns:
  *     An iopipe whose data is the decompressed ubyte version of the input stream.
@@ -282,10 +290,10 @@ auto unzip(Allocator = GCNoPointerAllocator, Chain)(Chain c, CompressionFormat f
  * to hold it.
  *
  * Params:
- *     Allocator - The allocator to use for buffering the data.
- *     c - The input iopipe that provides the input data. The window type
+ *     Allocator = The allocator to use for buffering the data.
+ *     c = The input iopipe that provides the input data. The window type
  *         MUST be implicitly convertable to an array of const ubytes.
- *     format - The desired format of the compressed data. The default is gzip.
+ *     format = The desired format of the compressed data. The default is gzip.
  * Returns:
  *     An iopipe whose data is the compressed ubyte version of the input stream.
  */

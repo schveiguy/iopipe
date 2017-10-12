@@ -1,0 +1,41 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"/>
+<title>Module iopipe.bufpipe</title>
+<link rel="stylesheet" type="text/css" href="../styles/ddox.css"/>
+<link rel="stylesheet" href="../prettify/prettify.css" type="text/css"/>
+<script type="text/javascript" src="../scripts/jquery.js">/**/</script><script type="text/javascript" src="../scripts/ddox.js">/**/</script></head><body onload="setupDdox();"><nav id="main-nav"><noscript><p style="color: red">The search functionality needs JavaScript enabled</p></noscript><div id="symbolSearchPane" style="display: none"><form action="#" method="GET">
+<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../";
+$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../iopipe/buffer.html">buffer</a></div></li><li><div class="module selected"><a href="../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module "><a href="../iopipe/stream.html">stream</a></div></li><li><div class="module "><a href="../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Module iopipe.bufpipe</h1><p>Core functionality for iopipe. Defines the base types for manipulating and
+  processing data.
+</p>
+<section></section><section><h2>Functions</h2><table>
+<col class="caption"/>
+<tr><th>Name</th><th>Description</th></tr><tr><td><code><a id="arrayCastPipe" class="[&quot;public&quot;]" href="../iopipe/bufpipe/arrayCastPipe.html">arrayCastPipe</a><span class="decoration">(c)</span></code></td><td>Given a pipe chain whose window is a straight array, create a pipe chain that
+ converts the array to another array type.
+</td></tr><tr><td><code><a id="asInputRange" class="[&quot;public&quot;]" href="../iopipe/bufpipe/asInputRange.html">asInputRange</a><span class="decoration">(c)</span></code></td><td>Convert an io pipe into a range, with each popFront releasing all the
+ current data and extending a specified amount.
+</td></tr><tr><td><code><a id="bufd" class="[&quot;public&quot;]" href="../iopipe/bufpipe/bufd.html">bufd</a><span class="decoration">(dev)</span></code></td><td>Create a buffer to manage the data from the given source, and wrap into an iopipe.
+</td></tr><tr><td><code><a id="byteSwapper" class="[&quot;public&quot;]" href="../iopipe/bufpipe/byteSwapper.html">byteSwapper</a><span class="decoration">(c)</span></code></td><td>Swap the bytes of every element before handing to next processor. The
+ littleEndian compile-time parameter indicates what endianness the data is
+ in. If it matches the platform's endianness, then nothing is done (no byte
+ swap occurs). Otherwise, a byte swap processor is returned wrapping the io
+ pipe.
+</td></tr><tr><td><code><a id="ensureElems" class="[&quot;public&quot;]" href="../iopipe/bufpipe/ensureElems.html">ensureElems</a><span class="decoration">(chain, elems)</span></code></td><td>Extend a pipe until it has a minimum number of elements. If the minimum
+ elements are already present, does nothing.
+</td></tr><tr><td><code><a id="iosrc" class="[&quot;public&quot;]" href="../iopipe/bufpipe/iosrc.html">iosrc</a><span class="decoration">(c)</span></code></td><td>Create an input source from a given Chain, and a given translation function/template.
+</td></tr><tr><td><code><a id="outputPipe" class="[&quot;public&quot;]" href="../iopipe/bufpipe/outputPipe.html">outputPipe</a><span class="decoration">(c, dev)</span></code></td><td>An output pipe writes all its data to a given sink stream.  Any data in the
+ output pipe's window has been written to the stream.
+</td></tr><tr><td><code><a id="process" class="[&quot;public&quot;]" href="../iopipe/bufpipe/process.html">process</a><span class="decoration">(c)</span></code></td><td>Process a given iopipe chain until it has reached EOF. This is accomplished
+ by extending and releasing continuously until extend returns 0.
+</td></tr></table></section><section><h2>Structs</h2><table>
+<col class="caption"/>
+<tr><th>Name</th><th>Description</th></tr><tr><td><code><a id="SimplePipe" class="[&quot;public&quot;]" href="../iopipe/bufpipe/SimplePipe.html">SimplePipe</a></code></td><td>An example processor. This demonstrates the required items for implementing
+ an iopipe.
+</td></tr></table></section><footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer
+</p>
+</td></tr><tr><th>Copyright</th><td><p>Copyright Steven Schveighoffer 2011-.
+</p>
+</td></tr><tr><th>License</th><td><p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+           at http://www.boost.org/LICENSE_1_0.txt)
+</p>
+</td></tr></table><p class="faint">Generated using the DDOX documentation generator</p></footer></div></body></html>

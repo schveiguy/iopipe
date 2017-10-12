@@ -1,7 +1,8 @@
 /**
+  Base mechanisms used to determine information about iopipes.
 Copyright: Copyright Steven Schveighoffer 2011-.
-License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy at
-           http://www.boost.org/LICENSE_1_0.txt)
+License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+           at http://www.boost.org/LICENSE_1_0.txt)
 Authors:   Steven Schveighoffer
  */
 module iopipe.traits;
@@ -17,7 +18,8 @@ auto window(T)(T[] t)
 
 /**
  * add extend function to all arrays that allows any array to be the start of a pipe chain.
- * Params: elements - Number of elements to extend, 0 to leave it up to the pipe chain.
+ * Params: t = The array to attempt to extend.
+ *         elements = ignored
  * Returns: Always returns 0 because arrays cannot be extended.
  */
 size_t extend(T)(T[] t, size_t elements)
@@ -28,7 +30,8 @@ size_t extend(T)(T[] t, size_t elements)
 /**
  * Add release function to all arrays. This will remove the given number of elements
  * from the front of the array
- * Params: elements - Number of elements to release
+ * Params: t = The array to release elements from.
+ *         elements = Number of elements to release
  */
 void release(T)(ref T[] t, size_t elements)
 {
@@ -149,7 +152,7 @@ template hasValve(T)
  * Boilerplate for implementing a valve. If you don't define a custom valve,
  * you should always mixin this template in all your iopipe templates.
  *
- * Params: pipechain - symbol that contains the upstream pipe chain.
+ * Params: pipechain = symbol that contains the upstream pipe chain.
  */
 mixin template implementValve(alias pipechain)
 {

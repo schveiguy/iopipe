@@ -1,0 +1,45 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"/>
+<title>Function ensureDecodeable</title>
+<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
+<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
+<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script></head><body onload="setupDdox();"><nav id="main-nav"><noscript><p style="color: red">The search functionality needs JavaScript enabled</p></noscript><div id="symbolSearchPane" style="display: none"><form action="#" method="GET">
+<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module "><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module selected"><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Function ensureDecodeable</h1><p>Wraps a text-based iopipe to make sure all code units are decodeable.
+</p><div class="prototype"><code class="lang-d"><div class="single-prototype">
+<span class="kwd">auto </span><span class="kwd">auto</span> <span class="pln">ensureDecodeable</span>(Chain)
+<span class="pun">(</span>
+<br/>
+&nbsp;&nbsp;<span class="typ">Chain</span> <span class="pln">c</span>
+<br/>
+<span class="pun">)</span>
+<br/>
+<span class="kwd">if</span> <span class="pun">(</span><span class="pln">isIopipe</span><span class="pun">!</span><span class="typ">Chain </span><span class="pun">&amp;&amp; </span><span class="pln">isSomeChar</span><span class="pun">!(</span><span class="typ">ElementEncodingType</span><span class="pun">!(</span><span class="typ">WindowType</span><span class="pun">!</span><span class="typ">Chain</span><span class="pun">))</span><span class="pun">);</span></div></code></div><section><p>When an iopipe is made up of character types, in some cases a slice of the
+ window may not be completely decodeable. For example, a wchar iopipe may
+ have only one half of a surrogate pair at the end of the window.
+</p>
+
+<p> This function generates an iopipe that only allows completely decodeable
+ sequences to be released to the next iopipe.
+</p>
+</section>
+
+<section><h2>Parameters</h2>
+<table><col class="caption"><tr><th>Name</th><th>Description</th></tr>
+<tr><td id="c">c</td><td> The iopipe whose element type is one of char, wchar, or dchar.</td></tr>
+</table>
+</section>
+<section><h2>Returns</h2>
+<p>An appropriate iopipe that ensures decodeability. Note that dchar iopipes
+    are always decodeable, so the result is simply a return of the input.
+</p>
+</section>
+
+<footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer
+</p>
+</td></tr><tr><th>Copyright</th><td><p>Copyright Steven Schveighoffer 2011-.
+</p>
+</td></tr><tr><th>License</th><td><p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+           at http://www.boost.org/LICENSE_1_0.txt)
+</p>
+</td></tr></table><p class="faint">Generated using the DDOX documentation generator</p></footer></div></body></html>

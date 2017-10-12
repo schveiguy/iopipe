@@ -1,7 +1,8 @@
 /**
+ Valve mechanism to allow manipulation of wrapped iopipe pieces.
 Copyright: Copyright Steven Schveighoffer 2011-.
-License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy at
-           http://www.boost.org/LICENSE_1_0.txt)
+License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+           at http://www.boost.org/LICENSE_1_0.txt)
 Authors:   Steven Schveighoffer
  */
 module iopipe.valve;
@@ -13,7 +14,7 @@ import std.traits : TemplateOf;
  *
  * This puts a transparent layer between the given chain and the next downstream iopipe to provide valve access. Calling valve on the resulting iopipe gives access to the chain argument passed in.
  *
- * Params: chain - The upstream iopipe chain to provide valve access to.
+ * Params: chain = The upstream iopipe chain to provide valve access to.
  *
  * Returns: A new iopipe chain that provides a valve access point to the parameter.
  */
@@ -149,7 +150,7 @@ private struct HoldingValveInlet(Chain)
  *
  * --------
  *
- * Params: chain - The upstream iopipe to which the valve controls access.
+ * Params: chain = The upstream iopipe to which the valve controls access.
  * Returns: A valve assembly that gives access to the outlet via the return iopipe, and access to the inlet via the valve member.
  */
 template holdingValve(Chain) if (isIopipe!Chain)
@@ -326,13 +327,13 @@ template autoFlush(Chain) if (__traits(hasMember, Chain, "flush"))
  * loop. It avoids having to explicitly specify the loop begin and end.
  *
  * Params:
- *    pipeline - a lambda template used to generate the the pipeline that will
+ *    pipeline = a lambda template used to generate the the pipeline that will
  *    be set up as a push chain.
- *    autoFlush - true (default) if you wish to auto-flush the push pipeline
+ *    autoFlush = true (default) if you wish to auto-flush the push pipeline
  *    when all references to it are gone. This moves the whole chain into a
  *    RefCounted struct which automatically flushes any remaining data that
  *    hasn't been flushed.
- *    c - An ioPipe to be used as the source for the data being pushed.
+ *    c = An ioPipe to be used as the source for the data being pushed.
  * Returns: A wrapped chain that will push any data that is released as needed
  * (i.e. as the buffer fills up).
  *

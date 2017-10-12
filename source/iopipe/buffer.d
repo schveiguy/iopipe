@@ -1,7 +1,9 @@
 /**
+ Buffer handling for iopipe.
+
 Copyright: Copyright Steven Schveighoffer 2011-.
-License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy at
-           http://www.boost.org/LICENSE_1_0.txt)
+License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+           at http://www.boost.org/LICENSE_1_0.txt)
 Authors:   Steven Schveighoffer, Dmitry Olshansky
  */
 module iopipe.buffer;
@@ -25,6 +27,7 @@ struct GCNoPointerAllocator
         return p ? p[0 .. size] : null;
     }
 
+    /// Determine an appropriate size for allocation to hold the given size data
     static size_t goodAllocSize(size_t size)
     {
         // mimic GCAllocator
@@ -95,7 +98,7 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator)
      * These bytes can be removed in this operation or further operations and
      * should no longer be used.
      *
-     * Params: elements - number of elements to release.
+     * Params: elements = number of elements to release.
      */
     void releaseFront(size_t elements)
     {
@@ -108,7 +111,7 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator)
      * These bytes can be removed in this operation or further operations and
      * should no longer be used.
      *
-     * Params: elements - number of elements to release.
+     * Params: elements = number of elements to release.
      */
     void releaseBack(size_t elements)
     {
@@ -125,7 +128,7 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator)
     }
 
     /**
-     * Accessor for the number of unused elements that can be extended without
+     * Returns: The number of unused elements that can be extended without
      * needing to fetch more data from the allocator.
      */
     size_t avail()
@@ -134,7 +137,7 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator)
     }
 
     /**
-     * Accessor for the total number of elements currently managed.
+     * Returns: The total number of elements currently managed.
      */
     size_t capacity()
     {
@@ -145,7 +148,7 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator)
      * Add more data to the window of currently valid data. To avoid expensive
      * reallocation, use avail to tune this call.
      *
-     * Params: request - The number of additional elements to add to the valid window.
+     * Params: request = The number of additional elements to add to the valid window.
      * Returns: The number of elements that were actually added to the valid
      * window. Note that this may be less than the request if more elements
      * could not be attained from the allocator.

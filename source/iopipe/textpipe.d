@@ -1,7 +1,8 @@
 /**
+ Text handling with iopipe.
 Copyright: Copyright Steven Schveighoffer 2011-.
-License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy at
-           http://www.boost.org/LICENSE_1_0.txt)
+License:   Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+           at http://www.boost.org/LICENSE_1_0.txt)
 Authors:   Steven Schveighoffer
  */
 module iopipe.textpipe;
@@ -45,7 +46,7 @@ template CodeUnit(UTFType u)
  * This does not advance the range past the BOM.
  *
  * Params:
- *    r - Range in which to detect BOM. Must be a random access range with
+ *    r = Range in which to detect BOM. Must be a random access range with
  *        element type of ubyte. Cannot be an infinite range.
  *
  * Returns:
@@ -180,7 +181,7 @@ ee_outer:
  * sequences to be released to the next iopipe.
  *
  * Params:
- *    Chain c - The iopipe whose element type is one of char, wchar, or dchar.
+ *    c = The iopipe whose element type is one of char, wchar, or dchar.
  * 
  * Returns:
  *    An appropriate iopipe that ensures decodeability. Note that dchar iopipes
@@ -236,7 +237,7 @@ unittest
  *
  * Params:
  *    enc = The assumed encoding of the text pipe.
- *    Chain = The chain to assume the encoding for. This MUST have a dynamic
+ *    c = The chain to assume the encoding for. This MUST have a dynamic
  *            array type for its window, and the elements must be integral.
  * Returns:
  *    An appropriate iopipe that has a window of the appropriate character type
@@ -1045,11 +1046,11 @@ unittest
  * `wchar`, or `dchar` window elements.
  *
  * Params:
- *     func - The template function to call.
- *     UnknownIsUTF8 - If true, then an undetected encoding will be passed as
+ *     func = The template function to call.
+ *     UnknownIsUTF8 = If true, then an undetected encoding will be passed as
  *          UTF8 to your function. Otherwise, the Unknown encoding will be passed.
- *     c - The iopipe input chain that should have encoded text in it.
- *     args - Any optional args to pass to the function.
+ *     c = The iopipe input chain that should have encoded text in it.
+ *     args = Any optional args to pass to the function.
  * Returns:
  *     The return value from func.
  */

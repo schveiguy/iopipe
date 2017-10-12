@@ -1,0 +1,66 @@
+<!DOCTYPE html><html><head>
+<meta charset="UTF-8"/>
+<title>Function textOutput</title>
+<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
+<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
+<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script></head><body onload="setupDdox();"><nav id="main-nav"><noscript><p style="color: red">The search functionality needs JavaScript enabled</p></noscript><div id="symbolSearchPane" style="display: none"><form action="#" method="GET">
+<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module "><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module selected"><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Function textOutput</h1><p>Take a text-based iopipe and turn it into an output range of <code class="lang-d"><span class="typ">dchar</span></code>. Note
+ that the iopipe must be an output iopipe, not an input one. In other words,
+ a <code class="lang-d"><span class="pln"><span class="pln">textOutput</span></span></code> result doesn't output its input, it uses its input as a place
+ to deposit data.
+</p><div class="prototype"><code class="lang-d"><div class="single-prototype">
+<span class="kwd">auto </span><span class="kwd">auto</span> <span class="pln">textOutput</span>(Chain)
+<span class="pun">(</span>
+<br/>
+&nbsp;&nbsp;<span class="typ">Chain</span> <span class="pln">c</span>
+<br/>
+<span class="pun">)</span><span class="pun">;</span></div></code></div><section><p>The given iopipe window will be written to, then data that is ready to be
+ output is released. It is expected that the iopipe will use this mechanism
+ to actually know which data to output. See the example for more information.
+</p>
+</section>
+
+<section><h2>Parameters</h2>
+<table><col class="caption"><tr><th>Name</th><th>Description</th></tr>
+<tr><td id="c">c</td><td> The output iopipe that can be used to put dchars into.</td></tr>
+</table>
+</section>
+<section><h2>Returns</h2>
+<p>An output range that can accept all forms of text data for output.
+</p>
+</section>
+<section><h2>Example</h2>
+
+<pre class="code"><code class="lang-d"><span class="kwd">import </span><span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">range </span><span class="pun">: </span><span class="pln">put</span><span class="pun">;
+</span><span class="com">// use a writeable buffer as output.
+</span><span class="typ">char</span><span class="pun">[</span><span class="lit">256</span><span class="pun">] </span><span class="pln">buffer</span><span class="pun">;
+</span><span class="pln">size_t written </span><span class="pun">= </span><span class="lit">0</span><span class="pun">;
+
+</span><span class="com">// this helps us see how many chars are written.
+</span><span class="kwd">struct </span><span class="typ">LocalIopipe
+</span><span class="pun">{
+    </span><span class="typ">char</span><span class="pun">[] </span><span class="pln">window</span><span class="pun">;
+    </span><span class="typ">void </span><span class="pln">release</span><span class="pun">(</span><span class="pln">size_t elems</span><span class="pun">)
+    {
+        </span><span class="pln">window<wbr/></span><span class="pun">.</span><span class="pln">release</span><span class="pun">(</span><span class="pln">elems</span><span class="pun">);
+        </span><span class="pln">written </span><span class="pun">+= </span><span class="pln">elems</span><span class="pun">;
+    }
+    </span><span class="pln">size_t extend</span><span class="pun">(</span><span class="pln">size_t elems</span><span class="pun">) { </span><span class="kwd">return </span><span class="lit">0</span><span class="pun">; }
+}
+</span><span class="kwd">auto </span><span class="pln">oRange </span><span class="pun">= </span><span class="typ">LocalIopipe</span><span class="pun">(</span><span class="pln">buffer</span><span class="pun">[])<wbr/>.</span><span class="pln">textOutput</span><span class="pun">;
+</span><span class="pln">put</span><span class="pun">(</span><span class="pln">oRange</span><span class="pun">, </span><span class="str">"hello, world"</span><span class="pun">);
+
+</span><span class="com">// written is updated whenever the iopipe is released
+</span><span class="kwd">assert</span><span class="pun">(</span><span class="pln">buffer</span><span class="pun">[</span><span class="lit">0 </span><span class="pun">.. </span><span class="pln">written</span><span class="pun">] == </span><span class="str">"hello, world"</span><span class="pun">);
+</span></code></pre>
+</section>
+
+<footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer
+</p>
+</td></tr><tr><th>Copyright</th><td><p>Copyright Steven Schveighoffer 2011-.
+</p>
+</td></tr><tr><th>License</th><td><p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+           at http://www.boost.org/LICENSE_1_0.txt)
+</p>
+</td></tr></table><p class="faint">Generated using the DDOX documentation generator</p></footer></div></body></html>
