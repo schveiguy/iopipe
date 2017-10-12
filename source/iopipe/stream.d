@@ -171,7 +171,7 @@ version(Posix)
         /**
          * Seek the stream.  seekCurrent seeks from the current stream position,
          * seekAboslute seeks to the given position offset from the beginning of
-         * the stream, and seekEnd seeks to the posision offset bytes from the end
+         * the stream, and seekEnd seeks to the position offset bytes from the end
          * of the stream (backwards).
          *
          * Note, this throws an exception if seeking fails or isn't supported.
