@@ -1,6 +1,8 @@
 # iopipe
 D language library for modular io
 
+API documentation: http://schveiguy.github.io/iopipe
+
 iopipe is an input/output library for the D programming language that strives to be as close as
 possible to the unix shell "pipe" io specification.
 
