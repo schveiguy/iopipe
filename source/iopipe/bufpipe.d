@@ -7,12 +7,12 @@ Authors:   Steven Schveighoffer
 module iopipe.bufpipe;
 import iopipe.buffer;
 import iopipe.traits;
-import std.traits : isArray, hasMember;
+import std.traits : isDynamicArray, hasMember;
 import std.range.primitives;
 
 /**
  * An example processor. This demonstrates the required items for implementing
- * a buffer pipe.
+ * an iopipe.
  *
  * SimplePipe will only extend exactly the elements requested (from what is
  * availble), so it can be used for testing with a static buffer to simulate
@@ -20,11 +20,15 @@ import std.range.primitives;
  */
 struct SimplePipe(Chain, size_t extendElementsDefault = 1) if(isIopipe!Chain)
 {
-    private
-    {
-        Chain chain;
-        private size_t downstreamElements;
-    }
+    /**
+     * The upstream data. This can be any iopipe. Throughout the library, the
+     * upstream data is generally saved as a member called "chain" as a matter
+     * of convention. This is not required or expected.
+     */
+    Chain chain;
+
+    // how many elements are we looking at.
+    private size_t downstreamElements;
 
     /**
      * Build on top of an existing chain 
@@ -101,14 +105,14 @@ struct SimplePipe(Chain, size_t extendElementsDefault = 1) if(isIopipe!Chain)
     static if(hasValve!(Chain))
     {
         /**
-         * Implement the required valve function. If the pipe you are building
-         * on top of has a valve, you must provide ref access to the valve.
+         * Implement the required valve function. If the pipe you are wrapping
+         * has a valve, you must provide ref access to the valve.
          *
          * Note, the correct boilerplate implementation can be inserted by
          * adding the following line to your pipe structure:
          *
          * ------
-         * mixin implementValve!(nameOfSubpipe);
+         * mixin implementValve!(nameOfUpstreamPipe);
          * ------
          *
          * Returns: A valve inlet that allows you to control flow of the data
@@ -271,7 +275,8 @@ else
  * swap occurs). Otherwise, a byte swap processor is returned wrapping the io
  * pipe.
  *
- * By default, littleEndian is set to perform byte swaps.
+ * Note, the width of the elements in the iopipe's window must be 2 or 4 bytes
+ * wide, and mutable.
  *
  * Params: littleEndian - true if the data arrives in little endian mode, false
  *             if in big endian mode.
@@ -410,7 +415,7 @@ private struct ArrayCastPipe(Chain, T)
  *
  * Returns: New pipe chain with new array type.
  */
-auto arrayCastPipe(T, Chain)(Chain c) if(isIopipe!(Chain) && isArray!(WindowType!(Chain)))
+auto arrayCastPipe(T, Chain)(Chain c) if(isIopipe!(Chain) && isDynamicArray!(WindowType!(Chain)))
 {
     static if(is(typeof(c.window[0]) == T))
         return c;
