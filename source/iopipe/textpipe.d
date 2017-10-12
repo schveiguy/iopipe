@@ -1039,6 +1039,11 @@ unittest
  * different encodings that iopipe handles, you will have 6 instantiations of
  * the function, no matter whether the input contains that encoding or not.
  *
+ * The second version assumes that the function doesn't care what the encoding
+ * is, but just wants to get a text iopipe with the appropriate encoding
+ * already handled. In this case, the function will receive a chain of `char`,
+ * `wchar`, or `dchar` window elements.
+ *
  * Params:
  *     func - The template function to call.
  *     UnknownIsUTF8 - If true, then an undetected encoding will be passed as
@@ -1069,3 +1074,16 @@ auto ref runWithEncoding(alias func, bool UnknownIsUTF8 = true, Chain, Args...)(
         }
     }
 }
+
+/// Ditto
+auto ref runEncoded(alias func, Chain, Args...)(Chain c, auto ref Args args)
+{
+    static auto ref forwarder(UTFType enc)(Chain c, auto ref Args args)
+    {
+        return func(c.assumeText!enc, args);
+    }
+
+    return runWithEncoding!forwarder(c, args);
+}
+
+// TODO: need unit tests here.
