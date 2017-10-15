@@ -7,7 +7,7 @@
 <input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
 $('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module selected"><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module "><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Function IODev.seekEnd</h1><p>Seek the stream.  seekCurrent seeks from the current stream position,
  seekAboslute seeks to the given position offset from the beginning of
- the stream, and seekEnd seeks to the posision offset bytes from the end
+ the stream, and seekEnd seeks to the position offset bytes from the end
  of the stream (backwards).
 </p><div class="prototype"><code class="lang-d"><div class="single-prototype">
 <span class="typ">ulong</span> <span class="pln">seekEnd</span>
