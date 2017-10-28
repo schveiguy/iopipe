@@ -451,11 +451,12 @@ unittest
  * you can process any more data.
  *
  * Params: chain = The pipe to work on.
- *         elems = The number of elements to ensure are in the window.
+ *         elems = The number of elements to ensure are in the window. If
+ *         omitted, all elements are extended.
  * Returns: The resulting number of elements in the window. This may be less
  *          than the requested elements if the pipe ran out of data.
  */
-size_t ensureElems(Chain)(ref Chain chain, size_t elems)
+size_t ensureElems(Chain)(ref Chain chain, size_t elems = size_t.max)
 {
     while(chain.window.length < elems)
     {
@@ -474,6 +475,20 @@ unittest
     assert(p.window == "hello");
     assert(p.ensureElems(100) == 12);
     assert(p.window == "hello, world");
+}
+
+// bug #11
+unittest
+{
+    auto x = "hello, world".iosrc!((ref c, b) {
+                                   if(b.length > c.window.length)
+                                      b = b[0 .. c.window.length];
+                                   b[] = c.window[0 .. b.length];
+                                   c.release(b.length);
+                                   return b.length; })
+                                   .bufd!(char);
+    auto elems = x.ensureElems();
+    assert(elems == 12);
 }
 
 private struct BufferedInputSource(T, Allocator, Source, size_t optimalReadSize)
@@ -726,6 +741,14 @@ unittest
  *
  * It is advisable to use a template or lambda that does not require a closure,
  * and is not a delegate from a struct that might move.
+ *
+ * The result is also alias-this'd to the chain, so it can be used as an iopipe also.
+ *
+ * Params:
+ *    fun = Function that accepts as its first parameter the input chain (of
+ *    type Chain), and as its second parameter, the buffer to read into. Only
+ *    buffer types that are supported are used.
+ *    c = The chain to read from
  */
 template iosrc(alias fun, Chain)
 {

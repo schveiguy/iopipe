@@ -57,11 +57,17 @@ unittest
 }
 
 /**
- * Array based buffer manager. Uses custom allocator to get the data.
+ * Array based buffer manager. Uses custom allocator to get the data. Limits
+ * growth to doubling.
+ *
+ * Params:
+ *    T = The type of the elements the buffer manager will use
+ *    Allocator = The allocator to use for adding more elements
+ *    floorSize = The size that can be freely allocated before growth is restricted to 2x.
  *
  * Based on concept by Dmitry Olshansky
  */
-struct BufferManager(T, Allocator = GCNoPointerAllocator)
+struct BufferManager(T, Allocator = GCNoPointerAllocator, size_t floorSize = 8192)
 {
     import std.experimental.allocator.common: stateSize;
     import std.experimental.allocator: IAllocator, theAllocator;
@@ -156,18 +162,24 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator)
     size_t extend(size_t request)
     {
         import std.algorithm.mutation : copy;
-        import std.algorithm.comparison : max;
+        import std.algorithm.comparison : max, min;
         import std.traits : hasMember;
+
+        // check to see if we can "move" the data for free.
+        auto validElems = valid - released;
+        if(validElems == 0)
+            valid = released = 0;
+
         if(buffer.length - valid >= request)
         {
+            // buffer has enough free space to accomodate.
             valid += request;
             return request;
         }
 
-        auto validElems = valid - released;
         if(validElems + request <= buffer.length)
         {
-            // can just move the data
+            // buffer has enough space if we move the data to the front.
             copy(buffer[released .. valid], buffer[0 .. validElems]);
             released = 0;
             valid = validElems + request;
@@ -175,33 +187,29 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator)
         }
 
         // otherwise, we must allocate/extend a new buffer
-
+        // limit growth to 2x.
+        immutable maxBufSize = max(buffer.length * 2, floorSize);
         static if(hasMember!(Allocator, "expand"))
         {
             // try expanding, no further copying required
             if(buffer.ptr)
             {
                 void[] buftmp = cast(void[])buffer;
-                if(allocator.expand(buftmp, (request - (buffer.length - valid)) * T.sizeof))
+                auto reqSize = min(maxBufSize - buffer.length,  request - (buffer.length - valid));
+                if(allocator.expand(buftmp, reqSize * T.sizeof))
                 {
+                    auto newElems = buffer.length - valid + reqSize;
+                    valid += newElems;
                     buffer = cast(T[])buftmp;
-                    if(validElems == 0)
-                    {
-                        valid = request;
-                        released = 0;
-                    }
-                    else
-                    {
-                        valid += request;
-                    }
-                    return request;
+                    return newElems;
                 }
             }
         }
 
         // copy and allocate a new buffer
         auto oldLen = buffer.length;
-        // grow by at least 1.4
+        // grow by at least 1.4, but not more than maxBufSize
+        request = min(request, maxBufSize - validElems);
         auto newLen = max(validElems + request, oldLen * 14 / 10, INITIAL_LENGTH);
         static if(hasMember!(Allocator, "goodAllocSize"))
             newLen = allocator.goodAllocSize(newLen * T.sizeof) / T.sizeof;
@@ -222,7 +230,7 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator)
         return request;
     }
 private:
-    enum size_t INITIAL_LENGTH = 128;
+    enum size_t INITIAL_LENGTH = (128 < floorSize ? 128 : floorSize);
     T[] buffer;
     size_t valid;
     size_t released;
