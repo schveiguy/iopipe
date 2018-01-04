@@ -13,7 +13,7 @@ $('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tr
 <br/>
 &nbsp;&nbsp;<span class="kwd">ref </span><span class="typ">Chain</span> <span class="pln">chain</span><span class="pun">,</span>
 <br/>
-&nbsp;&nbsp;<span class="pln">size_t</span> <span class="pln">elems</span>
+&nbsp;&nbsp;<span class="pln">size_t</span> <span class="pln">elems</span> <span class="pun">=</span> <span class="pln">size_t<wbr/></span><span class="pun">.</span><span class="pln">max</span>
 <br/>
 <span class="pun">)</span><span class="pun">;</span></div></code></div><section><p>This is useful if you need a certain number of elements in the pipe before
  you can process any more data.
@@ -23,7 +23,8 @@ $('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tr
 <section><h2>Parameters</h2>
 <table><col class="caption"><tr><th>Name</th><th>Description</th></tr>
 <tr><td id="chain">chain</td><td> The pipe to work on.</td></tr>
-<tr><td id="elems">elems</td><td> The number of elements to ensure are in the window.</td></tr>
+<tr><td id="elems">elems</td><td> The number of elements to ensure are in the window. If
+         omitted, all elements are extended.</td></tr>
 </table>
 </section>
 <section><h2>Returns</h2>

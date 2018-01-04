@@ -177,7 +177,7 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator, size_t floorSize = 819
             return request;
         }
 
-        if(validElems + request <= buffer.length)
+        if(buffer.length - validElems >= request)
         {
             // buffer has enough space if we move the data to the front.
             copy(buffer[released .. valid], buffer[0 .. validElems]);
@@ -213,6 +213,21 @@ struct BufferManager(T, Allocator = GCNoPointerAllocator, size_t floorSize = 819
         auto newLen = max(validElems + request, oldLen * 14 / 10, INITIAL_LENGTH);
         static if(hasMember!(Allocator, "goodAllocSize"))
             newLen = allocator.goodAllocSize(newLen * T.sizeof) / T.sizeof;
+
+        static if(hasMember!(Allocator, "reallocate"))
+        {
+            if(released == 0 && validElems > 0)
+            {
+                // try using allocator's reallocate member
+                void[] buf = buffer;
+                if(allocator.reallocate(buf, newLen * T.sizeof))
+                {
+                    buffer = cast(T[])buf;
+                    valid += request;
+                    return request;
+                }
+            }
+        }
         auto newbuf = cast(T[])allocator.allocate(newLen * T.sizeof);
         if(!newbuf.ptr)
             return 0;

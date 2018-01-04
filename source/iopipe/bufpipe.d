@@ -507,17 +507,27 @@ private struct BufferedInputSource(T, Allocator, Source, size_t optimalReadSize)
 
     size_t extend(size_t elements)
     {
-        import std.algorithm.comparison : max;
+        import std.algorithm.comparison : max, min;
+        auto oldLen = buffer.window.length;
+
         if(elements == 0 || (elements < optimalReadSize && buffer.capacity == 0))
         {
-            // use optimal read size
+            // optimal read, or first read. Use optimal read size
             elements = optimalReadSize;
+        }
+        else
+        {
+            // requesting a specific amount. Don't want to over-allocate the
+            // buffer, limit the request to 2x current elements, or optimal
+            // read size, whatever is larger.
+            immutable cap = max(optimalReadSize, oldLen * 2);
+            if(elements > cap)
+                elements = cap;
         }
 
         // ensure we maximize buffer use.
         elements = max(elements, buffer.avail());
 
-        auto oldLen = buffer.window.length;
         if(buffer.extend(elements) == 0)
         {
             // could not extend;
