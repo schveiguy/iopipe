@@ -25,9 +25,9 @@ auto openDev(int fd)
  * Open a file.  the specification for mode is identical to the linux man
  * page for fopen
  */
-auto openDev(in char[] name, in char[] mode = "rb")
+auto openDev(in char[] name, Mode mode)
 {
-    return ioObject(File(name, getMode(mode)));
+    return ioObject(File(name, mode));
 }
 
 
