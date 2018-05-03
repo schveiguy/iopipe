@@ -8,18 +8,41 @@ Authors:   Steven Schveighoffer
 module iopipe.stream;
 
 // for now, we only support posix systems. Need to add support for Windows.
+import core.stdc.stdio; // for FILE
 version(Posix)
 {
-    import core.stdc.stdio; // for FILE
     private import core.sys.posix.fcntl;
     private import core.sys.posix.unistd;
     private import std.string : toStringz;
+    version = IOPipeHaveDev;
+}
+else version(Windows)
+{
+    private import core.sys.windows.winbase;
+    private import core.sys.windows.windef;
+    version = IOPipeHaveDev;
+}
+
+version(IOPipeHaveStream)
+{
     /**
      * The basic device-based Input and Output stream.  This uses the OS's native
      * file handle to communicate using physical devices.
      */
     class IODev
     {
+        version(Posix)
+        {
+            /**
+             * The type of OS handle. int for posix systems, HANDLE for Windows
+             * systems.
+             */
+            alias HandleType = int;
+        }
+        else
+        {
+            alias HandleType = HANDLE;
+        }
         enum OpenMode
         {
             Unknown,
@@ -30,9 +53,16 @@ version(Posix)
 
         private
         {
-            // the file descriptor
-            // fd is set to -1 when the stream is closed
-            int fd = -1;
+            version(Posix)
+            {
+                // the file descriptor
+                // fd is set to -1 when the stream is closed
+                HandleType fd = -1;
+            }
+            else version(Windows)
+            {
+                HandleType fd = INVALID_HANDLE_VALUE;
+            }
 
             // This is purely used only to close the file when this IODev is
             // using the same file descriptor as a FILE *.
@@ -52,11 +82,11 @@ version(Posix)
          * Construct an input stream based on the file descriptor
          *
          * params:
-         * fd = The file descriptor to wrap
+         * fd = The low-level handle to wrap
          * closeOnDestroy = If set to true, the destructor will close the file
          * descriptor.  This does not affect the operation of close.
          */
-        this(int fd, bool closeOnDestroy = true)
+        this(HandleType fd, bool closeOnDestroy = true)
         {
             this.fd = fd;
             this._closeOnDestroy = closeOnDestroy;
@@ -76,7 +106,22 @@ version(Posix)
         {
             assert(fstream);
             this._cfile = fstream;
-            this.fd = .fileno(fstream);
+            version(Posix)
+                this.fd = .fileno(fstream);
+            else version(Windows)
+            {
+                auto descriptor = .fileno(fstream);
+                version(CRuntime_DigitalMars)
+                {
+                    // fileno gets the file descriptor. Then we need to get the
+                    // handle from there.
+                    this.fd = _fdToHandle(descriptor);
+                }
+                else
+                {
+                    this.fd = _get_osfhandle(descriptor);
+                }
+            }
             this._closeOnDestroy = closeOnDestroy;
         }
 
@@ -143,9 +188,44 @@ version(Posix)
             }
             if(!rw && m == 'w')
                 flags |= O_TRUNC;
-            this.fd = .open(toStringz(name), flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-            if(this.fd < 0)
-                throw new Exception("Error opening file, check errno");
+
+            version(Posix)
+            {
+                this.fd = .open(toStringz(name), flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+                if(this.fd < 0)
+                    throw new Exception("Error opening file, check errno");
+            }
+            else version(Windows)
+            {
+                // convert to Windows permission constants.
+                DWORD creationDisposition;
+                switch(flags & (O_CREAT | O_TRUNC))
+                {
+                case O_CREAT:
+                    creationDisposition = CREATE_NEW;
+                    break;
+                case O_TRUNC:
+                    creationDisposition = TRUNCATE_EXISTING;
+                    break;
+                case O_CREAT | O_TRUNC:
+                    creationDisposition = CREATE_ALWAYS;
+                    break;
+                default:
+                    creationDisposition = OPEN_EXISTING;
+                    break;
+                }
+                DWORD filePermissions;
+                if(flags & (O_RDONLY))
+                    filePermissions = GENERIC_READ;
+                if(flags & (O_WRONLY))
+                    filePermissions = GENERIC_WRITE;
+                this.fd = CreateFileW(toUTF16z(name), filePermissions,
+                          FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                          null, creationDisposition, FILE_ATTRIBUTE_NORMAL,
+                          null);
+                if(this.fd == INVALID_HANDLE_VALUE)
+                    throw new Exception("Error opening file, check errno");
+            }
 
             // perform a seek if necessary
             if(m == 'a')
@@ -159,11 +239,17 @@ version(Posix)
 
         private ulong _seek(long delta, int whence)
         {
-            auto retval = .lseek(fd, delta, whence);
-            if(retval < 0)
+            version(Posix)
             {
-                // TODO: probably need an I/O exception
-                throw new Exception("seek failed, check errno");
+                auto retval = .lseek(fd, delta, whence);
+                if(retval < 0)
+                {
+                    // TODO: probably need an I/O exception
+                    throw new Exception("seek failed, check errno");
+                }
+            }
+            else version(Windows)
+            {
             }
             return retval;
         }
