@@ -565,6 +565,41 @@ auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 
     return nullDev.bufd!(T, Allocator, optimalReadSize)();
 }
 
+/**
+ * Create a ring buffer to manage the data from the given source, and wrap into an iopipe.
+ *
+ * The iopipe RingBuffer type uses virtual memory mapping to have the same
+ * segment of data mapped to consecutive addresses. This allows true zero-copy
+ * usage. However, it does require use of resources that may possibly be
+ * limited, so you may want to justify that it's needed before using instead of
+ * bufd.
+ *
+ * Note also that a RingBuffer is not copyable (its destructor will unmap the
+ * memory), so this must use RefCounted to properly work.
+ *
+ * Params: T = The type of element to allocate with the allocator
+ *         Source = The type of the input stream. This must have a function
+ *         `read` that can read into the buffer's window.
+ *         dev = The input stream to use. If not specified, then a NullDev source is assumed.
+ *
+ * Returns: An iopipe that uses a RingBuffer to read data from the given device source.
+ */
+auto rbufd(T=ubyte, size_t optimalReadSize = 8 * 1024 / T.sizeof, Source)(Source dev)
+    if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
+{
+    // need to refcount the ring buffer, since it's not copyable
+    import std.typecons : refCounted;
+    auto buffer = refCounted(RingBuffer!T());
+    return BufferedInputSource!(typeof(buffer), Source, optimalReadSize)(dev, buffer);
+}
+
+/// Ditto
+auto rbufd(T=ubyte, size_t optimalReadSize = 8 * 1024 / T.sizeof)()
+{
+    import iopipe.stream: nullDev;
+    return nullDev.rbufd!(T, optimalReadSize)();
+}
+
 unittest
 {
     // simple struct that "reads" data from a pre-defined string array into a char buffer.
@@ -582,27 +617,15 @@ unittest
         }
     }
 
-    auto b = ArrayReader("hello, world!").bufd!(char);
-
-    assert(b.window.length == 0);
-    assert(b.extend(0) == 13);
-    assert(b.window == "hello, world!");
-    assert(b.extend(0) == 0);
-}
-
-auto rbufd(T=ubyte, size_t optimalReadSize = 8 * 1024 / T.sizeof, Source)(Source dev)
-    if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
-{
-    // need to refcount the ring buffer, since it's not copyable
-    import std.typecons : refCounted;
-    auto buffer = refCounted(RingBuffer!T());
-    return BufferedInputSource!(typeof(buffer), Source, optimalReadSize)(dev, buffer);
-}
-
-auto rbufd(T=ubyte, size_t optimalReadSize = 8 * 1024 / T.sizeof)()
-{
-    import iopipe.stream: nullDev;
-    return nullDev.rbufd!(T, optimalReadSize)();
+    void test(P)(P p)
+    {
+        assert(p.window.length == 0);
+        assert(p.extend(0) == 13);
+        assert(p.window == "hello, world!");
+        assert(p.extend(0) == 0);
+    }
+    test(ArrayReader("hello, world!").bufd!char);
+    test(ArrayReader("hello, world!").rbufd!char);
 }
 
 private struct OutputPipe(Chain, Sink)
