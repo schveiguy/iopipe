@@ -1,11 +1,11 @@
 <!DOCTYPE html><html><head>
 <meta charset="UTF-8"/>
-<title>Function IODev.seekCurrent</title>
+<title>IODev.seekCurrent - multiple declarations</title>
 <link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
 <link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
 <script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script></head><body onload="setupDdox();"><nav id="main-nav"><noscript><p style="color: red">The search functionality needs JavaScript enabled</p></noscript><div id="symbolSearchPane" style="display: none"><form action="#" method="GET">
 <input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
-$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module selected"><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module "><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Function IODev.seekCurrent</h1><p>Seek the stream.  seekCurrent seeks from the current stream position,
+$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module selected"><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module "><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>IODev.seekCurrent - multiple declarations</h1><nav class="page-nav"><ul><li><a href="#0">Function <code>IODev.seekCurrent</code></a></li><li><a href="#1">Function <code>IODev.seekCurrent</code></a></li></ul></nav><h2 id="0">Function IODev.seekCurrent</h2><p>Seek the stream.  seekCurrent seeks from the current stream position,
  seekAboslute seeks to the given position offset from the beginning of
  the stream, and seekEnd seeks to the position offset bytes from the end
  of the stream (backwards).
@@ -19,11 +19,34 @@ $('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tr
 </p>
 </section>
 
-<section><h2>params</h2>
+<section><h3>params</h3>
 <p>offset = bytes to seek.
 </p>
 </section>
-<section><h2>returns</h2>
+<section><h3>returns</h3>
+<p>The position of the stream from the beginning of the stream
+ after seeking, or ulong.max if this cannot be determined.
+</p>
+</section>
+<h2 id="1">Function IODev.seekCurrent</h2><p>Seek the stream.  seekCurrent seeks from the current stream position,
+ seekAboslute seeks to the given position offset from the beginning of
+ the stream, and seekEnd seeks to the position offset bytes from the end
+ of the stream (backwards).
+</p><div class="prototype"><code class="lang-d"><div class="single-prototype">
+<span class="typ">ulong</span> <span class="pln">seekCurrent</span>
+<span class="pun">(</span>
+<br/>
+&nbsp;&nbsp;<span class="typ">long</span> <span class="pln">offset</span>
+<br/>
+<span class="pun">)</span><span class="pun">;</span></div></code></div><section><p>Note, this throws an exception if seeking fails or isn't supported.
+</p>
+</section>
+
+<section><h3>params</h3>
+<p>offset = bytes to seek.
+</p>
+</section>
+<section><h3>returns</h3>
 <p>The position of the stream from the beginning of the stream
  after seeking, or ulong.max if this cannot be determined.
 </p>
