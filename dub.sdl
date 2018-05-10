@@ -27,3 +27,9 @@ subPackage {
    sourcePaths "examples/zip"
    dependency "iopipe" version="*"
 }
+subPackage {
+   name "search"
+   targetType "executable"
+   sourcePaths "examples/search"
+   dependency "iopipe" version="*"
+}

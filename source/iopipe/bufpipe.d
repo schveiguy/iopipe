@@ -491,10 +491,10 @@ unittest
     assert(elems == 12);
 }
 
-private struct BufferedInputSource(T, Allocator, Source, size_t optimalReadSize)
+private struct BufferedInputSource(BufferManager, Source, size_t optimalReadSize)
 {
     Source dev;
-    BufferManager!(T, Allocator) buffer;
+    BufferManager buffer;
     auto window()
     {
         return buffer.window;
@@ -555,7 +555,7 @@ private struct BufferedInputSource(T, Allocator, Source, size_t optimalReadSize)
 auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 * 1024 / T.sizeof, Source)(Source dev)
     if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
 {
-    return BufferedInputSource!(T, Allocator, Source, optimalReadSize)(dev);
+    return BufferedInputSource!(AllocatedBuffer!(T, Allocator), Source, optimalReadSize)(dev);
 }
 
 /// ditto
@@ -564,8 +564,6 @@ auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 
     import iopipe.stream: nullDev;
     return nullDev.bufd!(T, Allocator, optimalReadSize)();
 }
-
-
 
 unittest
 {
@@ -590,6 +588,21 @@ unittest
     assert(b.extend(0) == 13);
     assert(b.window == "hello, world!");
     assert(b.extend(0) == 0);
+}
+
+auto rbufd(T=ubyte, size_t optimalReadSize = 8 * 1024 / T.sizeof, Source)(Source dev)
+    if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
+{
+    // need to refcount the ring buffer, since it's not copyable
+    import std.typecons : refCounted;
+    auto buffer = refCounted(RingBuffer!T());
+    return BufferedInputSource!(typeof(buffer), Source, optimalReadSize)(dev, buffer);
+}
+
+auto rbufd(T=ubyte, size_t optimalReadSize = 8 * 1024 / T.sizeof)()
+{
+    import iopipe.stream: nullDev;
+    return nullDev.rbufd!(T, optimalReadSize)();
 }
 
 private struct OutputPipe(Chain, Sink)
