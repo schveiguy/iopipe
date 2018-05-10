@@ -300,10 +300,12 @@ import std.math : isPowerOf2;
 
 /**
  * A RingBuffer uses the underlying memory management system to avoid any
- * copying of data (unless expanding). It works by using the OS's mechanisms
- * that map memory (mmap or VirtualAlloc) to map the same region to 2
- * consecutive addresses. This allows one to use a buffer simply as an array,
- * even when the data wraps around the end of the buffer.
+ * copying of data (unless expanding).
+ *
+ * It works by using the OS's mechanisms that map memory (mmap or VirtualAlloc)
+ * to map the same region to 2 consecutive addresses. This allows one to use a
+ * buffer simply as an array, even when the data wraps around the end of the
+ * buffer.
  *
  * Like AllocatedBuffer, the growth is limited to doubling, but this has an
  * extra restriction that the buffer must be a multiple of the page size. Note
@@ -316,7 +318,7 @@ import std.math : isPowerOf2;
  * on destruction.
  *
  * Params:
- *    T = The type of the elements the buffer will use
+ *    T = The type of the elements the buffer will use. Must be sized as a power of 2.
  *    floorSize = The size that can be freely allocated before growth is
  *      restricted to 2x. Note that the OS imposes a floor size of one page in
  *      addition to this.

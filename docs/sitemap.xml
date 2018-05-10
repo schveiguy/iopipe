@@ -17,6 +17,13 @@
 <url><loc>http://127.0.0.1/iopipe/buffer/GCNoPointerAllocator.expand.html</loc></url>
 <url><loc>http://127.0.0.1/iopipe/buffer/GCNoPointerAllocator.goodAllocSize.html</loc></url>
 <url><loc>http://127.0.0.1/iopipe/buffer/GCNoPointerAllocator.instance.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/buffer/RingBuffer.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/buffer/RingBuffer.avail.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/buffer/RingBuffer.capacity.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/buffer/RingBuffer.extend.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/buffer/RingBuffer.releaseBack.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/buffer/RingBuffer.releaseFront.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/buffer/RingBuffer.window.html</loc></url>
 <url><loc>http://127.0.0.1/iopipe/bufpipe.html</loc></url>
 <url><loc>http://127.0.0.1/iopipe/bufpipe/arrayCastPipe.html</loc></url>
 <url><loc>http://127.0.0.1/iopipe/bufpipe/asInputRange.html</loc></url>
