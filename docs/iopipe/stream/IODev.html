@@ -1,14 +1,14 @@
 <!DOCTYPE html><html><head>
 <meta charset="UTF-8"/>
-<title>Class IODev</title>
+<title>IODev - multiple declarations</title>
 <link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
 <link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
 <script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script></head><body onload="setupDdox();"><nav id="main-nav"><noscript><p style="color: red">The search functionality needs JavaScript enabled</p></noscript><div id="symbolSearchPane" style="display: none"><form action="#" method="GET">
 <input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
-$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module selected"><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module "><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Class IODev</h1><p>The basic device-based Input and Output stream.  This uses the OS's native
+$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module selected"><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module "><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>IODev - multiple declarations</h1><nav class="page-nav"><ul><li><a href="#0">Class <code>IODev</code></a></li><li><a href="#1">Class <code>IODev</code></a></li></ul></nav><h2 id="0">Class IODev</h2><p>The basic device-based Input and Output stream.  This uses the OS's native
  file handle to communicate using physical devices.
 </p><div class="prototype"><code class="lang-d"><div class="single-prototype"><span class="kwd">class</span> <span class="typ">IODev</span>
-<span class="pun">;</span></div></code></div><section><h2>Constructors</h2><table>
+<span class="pun">;</span></div></code></div><section><h3>Constructors</h3><table>
 <col class="caption"/>
 <tr><th>Name</th><th>Description</th></tr><tr><td><a href="../../iopipe/stream/IODev.this.html" class="[&quot;public&quot;]"><code>this</code></a></td><td>Construct an input stream based on the file descriptor
 </td></tr><tr><td><a href="../../iopipe/stream/IODev.this.html" class="[&quot;public&quot;]"><code>this</code></a></td><td>Construct an input stream based on a FILE *.  The only difference
@@ -16,10 +16,10 @@ $('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tr
  FILE * if valid.
 </td></tr><tr><td><a href="../../iopipe/stream/IODev.this.html" class="[&quot;public&quot;]"><code>this</code></a></td><td>Open a file.  the specification for mode is identical to the linux man
  page for fopen
-</td></tr></table></section><section><h2>Properties</h2><table>
+</td></tr></table></section><section><h3>Properties</h3><table>
 <col class="caption"/>
 <tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td><a href="../../iopipe/stream/IODev.handle.html" class="[&quot;public&quot;, &quot;property&quot;]"><code>handle</code></a><span class="tableEntryAnnotation">[get]</span></td><td class="typecol"><code class="prettyprint lang-d"><span class="typ">int</span></code></td><td>Get the OS-specific handle for this File
-</td></tr></table></section><section><h2>Methods</h2><table>
+</td></tr></table></section><section><h3>Methods</h3><table>
 <col class="caption"/>
 <tr><th>Name</th><th>Description</th></tr><tr><td><a href="../../iopipe/stream/IODev.close.html" class="[&quot;public&quot;]"><code>close</code></a></td><td>Close the stream.  This releases any resources from the object.
 </td></tr><tr><td><a href="../../iopipe/stream/IODev.read.html" class="[&quot;public&quot;]"><code>read</code></a></td><td>Read data from the stream.
@@ -36,7 +36,42 @@ $('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tr
  the stream, and seekEnd seeks to the position offset bytes from the end
  of the stream (backwards).
 </td></tr><tr><td><a href="../../iopipe/stream/IODev.write.html" class="[&quot;public&quot;]"><code>write</code></a></td><td>Write a chunk of data to the output stream
-</td></tr></table></section><section><h2>Aliases</h2><table>
+</td></tr></table></section><section><h3>Aliases</h3><table>
+<col class="caption"/>
+<tr><th>Name</th><th>Description</th></tr><tr><td><a href="../../iopipe/stream/IODev.put.html" class="[&quot;public&quot;]"><code>put</code></a></td><td>Write a chunk of data to the output stream
+</td></tr></table></section>
+<h2 id="1">Class IODev</h2><p>The basic device-based Input and Output stream.  This uses the OS's native
+ file handle to communicate using physical devices.
+</p><div class="prototype"><code class="lang-d"><div class="single-prototype"><span class="kwd">class</span> <span class="typ">IODev</span>
+<span class="pun">;</span></div></code></div><section><h3>Constructors</h3><table>
+<col class="caption"/>
+<tr><th>Name</th><th>Description</th></tr><tr><td><a href="../../iopipe/stream/IODev.this.html" class="[&quot;public&quot;]"><code>this</code></a></td><td>Construct an input stream based on the file descriptor
+</td></tr><tr><td><a href="../../iopipe/stream/IODev.this.html" class="[&quot;public&quot;]"><code>this</code></a></td><td>Construct an input stream based on a FILE *.  The only difference
+ between this and the fd version is the close routine will close the
+ FILE * if valid.
+</td></tr><tr><td><a href="../../iopipe/stream/IODev.this.html" class="[&quot;public&quot;]"><code>this</code></a></td><td>Open a file.  the specification for mode is identical to the linux man
+ page for fopen
+</td></tr></table></section><section><h3>Properties</h3><table>
+<col class="caption"/>
+<tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td><a href="../../iopipe/stream/IODev.handle.html" class="[&quot;public&quot;, &quot;property&quot;]"><code>handle</code></a><span class="tableEntryAnnotation">[get]</span></td><td class="typecol"><code class="prettyprint lang-d"><span class="typ">int</span></code></td><td>Get the OS-specific handle for this File
+</td></tr></table></section><section><h3>Methods</h3><table>
+<col class="caption"/>
+<tr><th>Name</th><th>Description</th></tr><tr><td><a href="../../iopipe/stream/IODev.close.html" class="[&quot;public&quot;]"><code>close</code></a></td><td>Close the stream.  This releases any resources from the object.
+</td></tr><tr><td><a href="../../iopipe/stream/IODev.read.html" class="[&quot;public&quot;]"><code>read</code></a></td><td>Read data from the stream.
+</td></tr><tr><td><a href="../../iopipe/stream/IODev.seekAbsolute.html" class="[&quot;public&quot;]"><code>seekAbsolute</code></a></td><td>Seek the stream.  seekCurrent seeks from the current stream position,
+ seekAboslute seeks to the given position offset from the beginning of
+ the stream, and seekEnd seeks to the position offset bytes from the end
+ of the stream (backwards).
+</td></tr><tr><td><a href="../../iopipe/stream/IODev.seekCurrent.html" class="[&quot;public&quot;]"><code>seekCurrent</code></a></td><td>Seek the stream.  seekCurrent seeks from the current stream position,
+ seekAboslute seeks to the given position offset from the beginning of
+ the stream, and seekEnd seeks to the position offset bytes from the end
+ of the stream (backwards).
+</td></tr><tr><td><a href="../../iopipe/stream/IODev.seekEnd.html" class="[&quot;public&quot;]"><code>seekEnd</code></a></td><td>Seek the stream.  seekCurrent seeks from the current stream position,
+ seekAboslute seeks to the given position offset from the beginning of
+ the stream, and seekEnd seeks to the position offset bytes from the end
+ of the stream (backwards).
+</td></tr><tr><td><a href="../../iopipe/stream/IODev.write.html" class="[&quot;public&quot;]"><code>write</code></a></td><td>Write a chunk of data to the output stream
+</td></tr></table></section><section><h3>Aliases</h3><table>
 <col class="caption"/>
 <tr><th>Name</th><th>Description</th></tr><tr><td><a href="../../iopipe/stream/IODev.put.html" class="[&quot;public&quot;]"><code>put</code></a></td><td>Write a chunk of data to the output stream
 </td></tr></table></section>

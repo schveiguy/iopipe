@@ -117,7 +117,7 @@ ee_outer:
                     partial = 0;
                     break ee_outer;
                 }
-                immutable highestBit = bsr(~w[$ - i] & 0x0ff);
+                immutable highestBit = bsr(~cast(uint)w[$ - i] & 0x0ff);
                 switch(highestBit)
                 {
                 case 7:
@@ -346,7 +346,7 @@ byline_outer_1:
                     {
                         // can use memchr
                         import core.stdc.string: memchr;
-                        auto delimp = memchr(p, t, w.length - newChecked);
+                        auto delimp = cast(typeof(p))memchr(p, t, w.length - newChecked);
                         if(delimp != null)
                         {
                             // found it

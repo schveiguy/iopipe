@@ -1,14 +1,14 @@
 <!DOCTYPE html><html><head>
 <meta charset="UTF-8"/>
-<title>Template valveCount</title>
+<title>Enum member valveCount</title>
 <link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
 <link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
 <script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script></head><body onload="setupDdox();"><nav id="main-nav"><noscript><p style="color: red">The search functionality needs JavaScript enabled</p></noscript><div id="symbolSearchPane" style="display: none"><form action="#" method="GET">
 <input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
-$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module "><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module "><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module selected"><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Template valveCount</h1><p>Determine the number of valves in the given pipeline
+$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module "><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module "><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module selected"><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Enum member valveCount</h1><p>Determine the number of valves in the given pipeline
 </p><div class="prototype"><code class="lang-d"><div class="single-prototype">
-<span class="kwd">template</span> <span class="pln">valveCount</span>(T)
-;</div></code></div>
+<span class="kwd">enum</span> <span class="pln">valveCount</span>(T)
+ <span class="pun">=</span> <span class="lit">1 </span><span class="pun">+ <wbr/>.</span><span class="pln">valveCount</span><span class="pun">!(</span><span class="typ">PropertyType</span><span class="pun">!(</span><span class="pln">T<wbr/></span><span class="pun">.</span><span class="pln">init<wbr/></span><span class="pun">.</span><span class="pln">valve</span><span class="pun">))</span><span class="pun">;</span></div></code></div>
 
 <footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer
 </p>
