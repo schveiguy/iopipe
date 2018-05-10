@@ -61,7 +61,7 @@ unittest
  * growth to doubling.
  *
  * Params:
- *    T = The type of the elements the buffer manager will use
+ *    T = The type of the elements the buffer will use
  *    Allocator = The allocator to use for adding more elements
  *    floorSize = The size that can be freely allocated before growth is restricted to 2x.
  *
@@ -298,11 +298,34 @@ unittest
 // The type allocated MUST be a power of 2
 import std.math : isPowerOf2;
 
+/**
+ * A RingBuffer uses the underlying memory management system to avoid any
+ * copying of data (unless expanding). It works by using the OS's mechanisms
+ * that map memory (mmap or VirtualAlloc) to map the same region to 2
+ * consecutive addresses. This allows one to use a buffer simply as an array,
+ * even when the data wraps around the end of the buffer.
+ *
+ * Like AllocatedBuffer, the growth is limited to doubling, but this has an
+ * extra restriction that the buffer must be a multiple of the page size. Note
+ * that this does NOT add any memory to the GC, so do not store GC pointers in
+ * this buffer.
+ *
+ * Unlike AllocatedBuffer, this buffer is NOT copyable, so it must be
+ * refcounted if you are to pass it around. See rbufd which does this
+ * automatically for you. The reason for this is that it must unmap the memory
+ * on destruction.
+ *
+ * Params:
+ *    T = The type of the elements the buffer will use
+ *    floorSize = The size that can be freely allocated before growth is
+ *      restricted to 2x. Note that the OS imposes a floor size of one page in
+ *      addition to this.
+ */
 struct RingBuffer(T, size_t floorSize = 8192) if (isPowerOf2(T.sizeof))
 {
     @disable this(this); // we can't copy RingBuffer because otherwise it will deallocate the memory
     /**
-     * Give bytes back to the buffer manager from the front of the buffer.
+     * Give bytes back to the buffer from the front of the buffer.
      * These bytes can be removed in this operation or further operations and
      * should no longer be used.
      *
@@ -321,7 +344,7 @@ struct RingBuffer(T, size_t floorSize = 8192) if (isPowerOf2(T.sizeof))
     }
 
     /**
-     * Give bytes back to the buffer manager from the back of the buffer.
+     * Give bytes back to the buffer from the back of the buffer.
      * These bytes can be removed in this operation or further operations and
      * should no longer be used.
      *
@@ -334,7 +357,7 @@ struct RingBuffer(T, size_t floorSize = 8192) if (isPowerOf2(T.sizeof))
     }
 
     /**
-     * The window of currently valid data
+     * The window of currently valid data.
      */
     T[] window()
     {
@@ -344,7 +367,7 @@ struct RingBuffer(T, size_t floorSize = 8192) if (isPowerOf2(T.sizeof))
 
     /**
      * Returns: The number of unused elements that can be extended without
-     * needing to fetch more data from the allocator.
+     * needing to reallocate the buffer.
      */
     size_t avail()
     {
@@ -366,7 +389,7 @@ struct RingBuffer(T, size_t floorSize = 8192) if (isPowerOf2(T.sizeof))
      * Params: request = The number of additional elements to add to the valid window.
      * Returns: The number of elements that were actually added to the valid
      * window. Note that this may be less than the request if more elements
-     * could not be attained from the allocator.
+     * could not be attained from the OS.
      */
     size_t extend(size_t request)
     {
