@@ -113,9 +113,11 @@ Most iopipes start with a source. A source is a type that provides a `read`
 member, accepting a buffer that is filled in with data from a data stream, and
 returns how many elements were read. A `BufferManager` is used to manage the
 allocation of the data, and turn the buffered data into a proper iopipe. The
-iopipe library provides only one type of BufferManager at this time, which uses
-an Allocator from `std.experimental.allocator` to allocate an array of data for
-reading/writing.
+iopipe library provides two types of Buffers that can be managed -- an
+`AllocatedBuffer` type that uses an `Allocator` from std.experimental to manage
+the allocations for the buffer, and a `RingBuffer` type which is a very fast
+version of a Circular Buffer. Note that the RingBuffer type is posix-only, but
+Windows support will be added later.
 
 As of this release, iopipe provides 2 basic sources, a `NullDev` which provides
 uninitialized data, and a `ZeroDev` which provides zeroed data.
@@ -136,7 +138,10 @@ providing the data further down the chain.
 
 The IODev class is provided as a simple mechanism to read and write file
 descriptors. It is a bare-bones type that is both a Sink and a Source. It works
-*only* on Posix systems at the moment. Windows support is coming later.
+*only* on Posix systems. In a future release, iopipe will use Martin Nowak's io
+library and I will deprecate this functionality. At that point, Windows support
+will be available, along with support for other stream types (sockets, pipes,
+etc.).
 
 Note that this is not the only type of source or sink that iopipe will work
 with. It just happens to be easy to implement. I expect people will want to use
@@ -191,6 +196,8 @@ Take a look at the example programs in the examples subdirectory.
   and converts the input to the output, adding a BOM if necessary.
 * zip - Compress the standard input to the standard output.
 * unzip - Decompress the standard input to the standard output.
+* search - Print lines that match given search terms, with some context lines
+  surrounding the line.
   
 ## Building
 
@@ -198,12 +205,3 @@ iopipe is built with [dub](http://code.dlang.org). To build the examples, use
 the dub package command line:
 
 `dub build :examplename`
-
-## Documentation
-
-Iopipe should be nearly completely documented. Please let me know if something
-is missing or incorrect. I plan to provide a fully built ddoc output somewhere.
-
-## Testing
-
-iopipe unittests are fairly complete.
