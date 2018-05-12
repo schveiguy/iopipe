@@ -1,6 +1,6 @@
 name "iopipe"
 description "A modular io library in D."
-copyright "Copyright © 2011-2016, Steven Schveighoffer"
+copyright "Copyright © 2011-2018, Steven Schveighoffer"
 authors "Steven Schveighoffer" "Dmitry Olshansky"
 license "BSL-1.0"
 dependency "io" version="~master"
@@ -26,5 +26,11 @@ subPackage {
    name "zip"
    targetType "executable"
    sourcePaths "examples/zip"
+   dependency "iopipe" version="*"
+}
+subPackage {
+   name "search"
+   targetType "executable"
+   sourcePaths "examples/search"
    dependency "iopipe" version="*"
 }

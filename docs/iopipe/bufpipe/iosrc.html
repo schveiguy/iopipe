@@ -15,8 +15,19 @@ $('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tr
 <span class="pun">)</span><span class="pun">;</span></div></code></div><section><p>It is advisable to use a template or lambda that does not require a closure,
  and is not a delegate from a struct that might move.
 </p>
+
+<p> The result is also alias-this'd to the chain, so it can be used as an iopipe also.
+</p>
 </section>
 
+<section><h2>Parameters</h2>
+<table><col class="caption"><tr><th>Name</th><th>Description</th></tr>
+<tr><td id="fun">fun</td><td> Function that accepts as its first parameter the input chain (of
+    type Chain), and as its second parameter, the buffer to read into. Only
+    buffer types that are supported are used.</td></tr>
+<tr><td id="c">c</td><td> The chain to read from</td></tr>
+</table>
+</section>
 
 <footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer
 </p>

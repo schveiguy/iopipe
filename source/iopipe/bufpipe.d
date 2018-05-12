@@ -491,10 +491,10 @@ unittest
     assert(elems == 12);
 }
 
-private struct BufferedInputSource(T, Allocator, Source, size_t optimalReadSize)
+private struct BufferedInputSource(BufferManager, Source, size_t optimalReadSize)
 {
     Source dev;
-    BufferManager!(T, Allocator) buffer;
+    BufferManager buffer;
     auto window()
     {
         return buffer.window;
@@ -507,17 +507,27 @@ private struct BufferedInputSource(T, Allocator, Source, size_t optimalReadSize)
 
     size_t extend(size_t elements)
     {
-        import std.algorithm.comparison : max;
+        import std.algorithm.comparison : max, min;
+        auto oldLen = buffer.window.length;
+
         if(elements == 0 || (elements < optimalReadSize && buffer.capacity == 0))
         {
-            // use optimal read size
+            // optimal read, or first read. Use optimal read size
             elements = optimalReadSize;
+        }
+        else
+        {
+            // requesting a specific amount. Don't want to over-allocate the
+            // buffer, limit the request to 2x current elements, or optimal
+            // read size, whatever is larger.
+            immutable cap = max(optimalReadSize, oldLen * 2);
+            if(elements > cap)
+                elements = cap;
         }
 
         // ensure we maximize buffer use.
         elements = max(elements, buffer.avail());
 
-        auto oldLen = buffer.window.length;
         if(buffer.extend(elements) == 0)
         {
             // could not extend;
@@ -545,7 +555,7 @@ private struct BufferedInputSource(T, Allocator, Source, size_t optimalReadSize)
 auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 * 1024 / T.sizeof, Source)(Source dev)
     if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
 {
-    return BufferedInputSource!(T, Allocator, Source, optimalReadSize)(dev);
+    return BufferedInputSource!(AllocatedBuffer!(T, Allocator), Source, optimalReadSize)(dev);
 }
 
 /// ditto
@@ -555,7 +565,40 @@ auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 
     return nullDev.bufd!(T, Allocator, optimalReadSize)();
 }
 
+/**
+ * Create a ring buffer to manage the data from the given source, and wrap into an iopipe.
+ *
+ * The iopipe RingBuffer type uses virtual memory mapping to have the same
+ * segment of data mapped to consecutive addresses. This allows true zero-copy
+ * usage. However, it does require use of resources that may possibly be
+ * limited, so you may want to justify that it's needed before using instead of
+ * bufd.
+ *
+ * Note also that a RingBuffer is not copyable (its destructor will unmap the
+ * memory), so this must use RefCounted to properly work.
+ *
+ * Params: T = The type of element to allocate with the allocator
+ *         Source = The type of the input stream. This must have a function
+ *         `read` that can read into the buffer's window.
+ *         dev = The input stream to use. If not specified, then a NullDev source is assumed.
+ *
+ * Returns: An iopipe that uses a RingBuffer to read data from the given device source.
+ */
+auto rbufd(T=ubyte, size_t optimalReadSize = 8 * 1024 / T.sizeof, Source)(Source dev)
+    if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
+{
+    // need to refcount the ring buffer, since it's not copyable
+    import std.typecons : refCounted;
+    auto buffer = refCounted(RingBuffer!T());
+    return BufferedInputSource!(typeof(buffer), Source, optimalReadSize)(dev, buffer);
+}
 
+/// Ditto
+auto rbufd(T=ubyte, size_t optimalReadSize = 8 * 1024 / T.sizeof)()
+{
+    import iopipe.stream: nullDev;
+    return nullDev.rbufd!(T, optimalReadSize)();
+}
 
 unittest
 {
@@ -574,12 +617,15 @@ unittest
         }
     }
 
-    auto b = ArrayReader("hello, world!").bufd!(char);
-
-    assert(b.window.length == 0);
-    assert(b.extend(0) == 13);
-    assert(b.window == "hello, world!");
-    assert(b.extend(0) == 0);
+    void test(P)(P p)
+    {
+        assert(p.window.length == 0);
+        assert(p.extend(0) == 13);
+        assert(p.window == "hello, world!");
+        assert(p.extend(0) == 0);
+    }
+    test(ArrayReader("hello, world!").bufd!char);
+    test(ArrayReader("hello, world!").rbufd!char);
 }
 
 private struct OutputPipe(Chain, Sink)

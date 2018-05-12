@@ -73,6 +73,10 @@ private struct ZipSrc(Chain)
             // no data requested, or stream is closed
             return 0;
 
+        // zlib works with 32-bit lengths ONLY, so truncate here to avoid math
+        // issues.
+        if(target.length > uint.max)
+            target = target[0 .. uint.max];
         zstream.next_out = target.ptr;
         zstream.avail_out = cast(uint)target.length;
 
@@ -133,6 +137,7 @@ private struct UnzipSrc(Chain)
     Chain chain;
     // zstream cannot be moved once initialized, as it has internal pointers to itself.
     RefCounted!(z_stream, RefCountedAutoInitialize.no) zstream;
+    private CompressionFormat openedFormat;
 
     // convenience, because this is so long and painful!
     private @property z_stream *zstrptr()
@@ -140,14 +145,29 @@ private struct UnzipSrc(Chain)
         return &zstream.refCountedPayload();
     }
 
-    this(Chain c, CompressionFormat format)
+    private void ensureMoreData(bool setupInput = false)
     {
-        chain = c;
-        zstream.refCountedStore.ensureInitialized;
-        zstream.next_in = chain.window.ptr;
-        zstream.avail_in = cast(uint)chain.window.length;
+        if(chain.window.length < 4096) // don't overallocate
+        {
+            chain.extend(0);
+            setupInput = true;
+        }
+        if(setupInput)
+        {
+            zstream.next_in = chain.window.ptr;
+            // note, zlib uses uint, so we need to deal with issues with larger
+            // than uint.max window length.
+            if(chain.window.length > uint.max)
+                zstream.avail_in = uint.max;
+            else
+                zstream.avail_in = cast(uint)chain.window.length;
+        }
+    }
+
+    private void initializeStream()
+    {
         int windowbits = 15;
-        switch(format) with(CompressionFormat)
+        switch(openedFormat) with(CompressionFormat)
         {
         case gzip:
             windowbits += 16;
@@ -167,35 +187,65 @@ private struct UnzipSrc(Chain)
 
         // just in case inflateinit consumed some bytes.
         chain.release(zstream.next_in - chain.window.ptr);
+        ensureMoreData();
+    }
+
+    this(Chain c, CompressionFormat format)
+    {
+        chain = c;
+        openedFormat = format;
+        zstream.refCountedStore.ensureInitialized;
+        ensureMoreData(true);
+        initializeStream();
     }
 
     size_t read(ubyte[] target)
     {
-        if(target.length == 0 || zstream.zalloc == null)
-            // no data requested, or stream is closed
+        if(target.length == 0)
+            // no data requested
             return 0;
+
+        if(zstream.zalloc == null)
+        {
+            // stream not opened. Try opening it if there is data available.
+            // This happens for concatenated streams.
+            ensureMoreData(true);
+            if(chain.window.length == 0)
+                // no more data left
+                return 0;
+            initializeStream();
+        }
+
+
+        // zlib works with 32-bit lengths ONLY, so truncate here to avoid math
+        // issues.
+        if(target.length > uint.max)
+            target = target[0 .. uint.max];
         zstream.next_out = target.ptr;
         zstream.avail_out = cast(uint)target.length;
 
         // now, unzip the data into the buffer. Stop when we have done at most
         // 2 extends on the input data.
-        if(chain.window.length == 0)
-        {
-            // need at least some data to work with.
-            chain.extend(0);
-        }
         foreach(i; 0 .. 2)
         {
-            zstream.next_in = chain.window.ptr;
-            zstream.avail_in = cast(uint)chain.window.length;
+            ensureMoreData();
             auto inflate_result = inflate(zstrptr, Z_NO_FLUSH);
             chain.release(zstream.next_in - chain.window.ptr);
             if(inflate_result == Z_STREAM_END)
             {
-                // all done.
+                // all done?
                 size_t result = target.length - zstream.avail_out;
                 inflateEnd(zstrptr);
                 zstream = z_stream.init;
+                if(result == 0)
+                {
+                    // for some reason we had an open stream, but Z_STREAM_END
+                    // happened without any more data coming out. In this case,
+                    // returning 0 would indicate the end of the stream, but
+                    // there may be more data if we try again (for concatenated
+                    // streams).
+                    return read(target);
+                }
                 return result;
             }
             else if(inflate_result == Z_OK)
@@ -210,9 +260,6 @@ private struct UnzipSrc(Chain)
                 import std.conv;
                 throw new Exception("unhandled unzip condition " ~ to!string(inflate_result));
             }
-
-            // read more data
-            chain.extend(0);
         }
 
         // return the number of bytes that were inflated
