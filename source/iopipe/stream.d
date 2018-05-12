@@ -25,7 +25,7 @@ auto openDev(int fd)
  * Open a file.  the specification for mode is identical to the linux man
  * page for fopen
  */
-auto openDev(in char[] name, Mode mode)
+auto openDev(in char[] name, Mode mode = Mode.read | Mode.binary)
 {
     return ioObject(File(name, mode));
 }
