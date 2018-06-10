@@ -32,7 +32,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
     if(oEnc == iEnc)
     {
         // straight pass-through
-        input.outputPipe(new IODev(1)).process();
+        input.outputPipe(openDev(1)).process();
     }
     else
     {
@@ -47,7 +47,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             static if(iEnc == UTFType.UTF16BE)
             {
                 // just changing byte order. Just do a byte swapper.
-                input.arrayCastPipe!(ushort).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODev(1)).process();
+                input.arrayCastPipe!(ushort).byteSwapper.arrayCastPipe!(ubyte).outputPipe(openDev(1)).process();
             }
             else
             {
@@ -60,7 +60,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             static if(iEnc == UTFType.UTF16LE)
             {
                 // just changing byte order. Just do a byte swapper.
-                input.arrayCastPipe!(ushort).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODev(1)).process();
+                input.arrayCastPipe!(ushort).byteSwapper.arrayCastPipe!(ubyte).outputPipe(openDev(1)).process();
             }
             else
             {
@@ -73,7 +73,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             static if(iEnc == UTFType.UTF32BE)
             {
                 // just changing byte order. Just do a byte swapper.
-                input.arrayCastPipe!(uint).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODev(1)).process();
+                input.arrayCastPipe!(uint).byteSwapper.arrayCastPipe!(ubyte).outputPipe(openDev(1)).process();
             }
             else
             {
@@ -86,7 +86,7 @@ void translate(UTFType iEnc, Input)(Input input, string outputEncoding)
             static if(iEnc == UTFType.UTF32LE)
             {
                 // just changing byte order. Just do a byte swapper.
-                input.arrayCastPipe!(uint).byteSwapper.arrayCastPipe!(ubyte).outputPipe(new IODev(1)).process();
+                input.arrayCastPipe!(uint).byteSwapper.arrayCastPipe!(ubyte).outputPipe(openDev(1)).process();
             }
             else
             {

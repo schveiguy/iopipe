@@ -3,6 +3,7 @@ description "A modular io library in D."
 copyright "Copyright © 2011-2018, Steven Schveighoffer"
 authors "Steven Schveighoffer" "Dmitry Olshansky"
 license "BSL-1.0"
+dependency "io" version="~master"
 subPackage {
    name "byline"
    targetType "executable"
