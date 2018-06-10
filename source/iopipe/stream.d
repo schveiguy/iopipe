@@ -8,24 +8,27 @@ Authors:   Steven Schveighoffer
 module iopipe.stream;
 import std.io;
 
-alias IODev = IOObject!(File);
+deprecated alias IODev = IOObject!(File);
 
 /**
  * Construct an input stream based on the file descriptor
  *
  * params:
  * fd = The file descriptor to wrap
+ *
+ * Deprecated: Use https://code.dlang.org/io for low-level device i/o
  */
-auto openDev(int fd)
+deprecated auto openDev(int fd)
 {
     return ioObject(File(fd));
 }
 
 /**
- * Open a file.  the specification for mode is identical to the linux man
- * page for fopen
+ * Open a file by name.
+ *
+ * Deprecated: Use https://code.dlang.org/io for low-level device i/o
  */
-auto openDev(in char[] name, Mode mode = Mode.read | Mode.binary)
+deprecated auto openDev(in char[] name, Mode mode = Mode.read | Mode.binary)
 {
     return ioObject(File(name, mode));
 }
