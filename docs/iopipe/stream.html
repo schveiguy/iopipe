@@ -9,14 +9,8 @@ $('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tr
 </p>
 <section></section><section><h2>Functions</h2><table>
 <col class="caption"/>
-<tr><th>Name</th><th>Description</th></tr><tr><td><code><a id="openDev" class="[&quot;public&quot;]" href="../iopipe/stream/openDev.html">openDev</a><span class="decoration">(args)</span></code></td><td>Convenience function to open a file without using the new operator.
-</td></tr><tr><td><code><a id="openDev" class="[&quot;public&quot;]" href="../iopipe/stream/openDev.html">openDev</a><span class="decoration">(args)</span></code></td><td>Convenience function to open a file without using the new operator.
-</td></tr></table></section><section><h2>Classes</h2><table>
-<col class="caption"/>
-<tr><th>Name</th><th>Description</th></tr><tr><td><code><a id="IODev" class="[&quot;public&quot;]" href="../iopipe/stream/IODev.html">IODev</a></code></td><td>The basic device-based Input and Output stream.  This uses the OS's native
- file handle to communicate using physical devices.
-</td></tr><tr><td><code><a id="IODev" class="[&quot;public&quot;]" href="../iopipe/stream/IODev.html">IODev</a></code></td><td>The basic device-based Input and Output stream.  This uses the OS's native
- file handle to communicate using physical devices.
+<tr><th>Name</th><th>Description</th></tr><tr><td><code><a id="openDev" class="[&quot;public&quot;]" href="../iopipe/stream/openDev.html">openDev</a><span class="decoration">(fd)</span></code></td><td>Construct an input stream based on the file descriptor
+</td></tr><tr><td><code><a id="openDev" class="[&quot;public&quot;]" href="../iopipe/stream/openDev.html">openDev</a><span class="decoration">(name, mode)</span></code></td><td>Open a file by name.
 </td></tr></table></section><section><h2>Structs</h2><table>
 <col class="caption"/>
 <tr><th>Name</th><th>Description</th></tr><tr><td><code><a id="NullDev" class="[&quot;public&quot;]" href="../iopipe/stream/NullDev.html">NullDev</a></code></td><td>A source that reads uninitialized data.
@@ -25,11 +19,13 @@ $('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tr
 <col class="caption"/>
 <tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td><a id="nullDev" class="[&quot;public&quot;]" href="../iopipe/stream/nullDev.html"><code>nullDev</code></a></td><td><code class="prettyprint lang-d"><span class="kwd">immutable</span><span class="pun">(</span><a href="../iopipe/stream/NullDev.html"><span class="typ">NullDev</span></a><span class="pun">)</span></code></td><td>Common instance of NullDev to use anywhere needed.
 </td></tr><tr><td><a id="zeroDev" class="[&quot;public&quot;]" href="../iopipe/stream/zeroDev.html"><code>zeroDev</code></a></td><td><code class="prettyprint lang-d"><span class="kwd">immutable</span><span class="pun">(</span><a href="../iopipe/stream/ZeroDev.html"><span class="typ">ZeroDev</span></a><span class="pun">)</span></code></td><td>Common instance of ZeroDev to use anywhere needed.
-</td></tr></table></section><footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer
+</td></tr></table></section><section><h2>Aliases</h2><table>
+<col class="caption"/>
+<tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td><a id="IODev" class="[&quot;public&quot;]" href="../iopipe/stream/IODev.html"><code>IODev</code></a></td><td><code class="prettyprint lang-d"><span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">io<wbr/></span><span class="pun">.</span><span class="typ">IOObject</span>!(std.io.file.File)</code></td><td></td></tr></table></section><footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer
 </p>
 </td></tr><tr><th>Copyright</th><td><p>Copyright Steven Schveighoffer 2011-.
 </p>
 </td></tr><tr><th>License</th><td><p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
-           at http://www.boost.org/LICENSE_1_0.txt)
+at http://www.boost.org/LICENSE_1_0.txt)
 </p>
 </td></tr></table><p class="faint">Generated using the DDOX documentation generator</p></footer></div></body></html>
