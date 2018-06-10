@@ -8,6 +8,7 @@ Authors:   Steven Schveighoffer
 module iopipe.stream;
 import std.io;
 
+/// Deprecated: use std.io directly
 deprecated alias IODev = IOObject!(File);
 
 /**
@@ -18,7 +19,8 @@ deprecated alias IODev = IOObject!(File);
  *
  * Deprecated: Use https://code.dlang.org/io for low-level device i/o
  */
-deprecated auto openDev(int fd)
+deprecated("use std.io")
+auto openDev(int fd)
 {
     return ioObject(File(fd));
 }
@@ -28,7 +30,8 @@ deprecated auto openDev(int fd)
  *
  * Deprecated: Use https://code.dlang.org/io for low-level device i/o
  */
-deprecated auto openDev(in char[] name, Mode mode = Mode.read | Mode.binary)
+deprecated("use std.io")
+auto openDev(in char[] name, Mode mode = Mode.read | Mode.binary)
 {
     return ioObject(File(name, mode));
 }

@@ -39,13 +39,13 @@ For example:
 import iopipe.textpipe;
 import iopipe.zip;
 import iopipe.bufpipe;
-import iopipe.stream;
+import std.io;
 
 // open a zipfile, decompress it, detect the text encoding inside, and process
 // lines that contain "foo"
 void main(string[] args)
 {
-    openDev(args[1])            // open a file
+    File(args[1])               // open a file
          .bufd                  // buffer it
          .unzip                 // decompress it
          .runEncoded!((input) { // detect the text encoding and process it.
@@ -136,16 +136,29 @@ providing the data further down the chain.
 
 ### IODev
 
-The IODev class is provided as a simple mechanism to read and write file
-descriptors. It is a bare-bones type that is both a Sink and a Source. It works
-*only* on Posix systems. In a future release, iopipe will use Martin Nowak's io
-library and I will deprecate this functionality. At that point, Windows support
-will be available, along with support for other stream types (sockets, pipes,
-etc.).
+The `IODev` class has been deprecated, and is now an alias to Martin Nowak's
+[std.io](https://github.com/MartinNowak/io) library. At the moment, iopipe has
+io as a dependency, but it may remove that dependency once the deprecation is
+gone.
 
-Note that this is not the only type of source or sink that iopipe will work
-with. It just happens to be easy to implement. I expect people will want to use
-their own device types (such as sockets or event-driven i/o).
+Instead of using `openDev` or `IODev`, it is preferred to use std.io to open
+streams and then build iopipes on top of those.
+
+Note a few things:
+
+1. Because of the reliance on std.io and a quirk in the comipler that was fixed
+   recently, this arrangement only builds on DMD 2.080.1 and later. If you need
+   support for earlier compilers, use 0.0.4 of iopipe or earlier. If you use
+   0.1.0 or later of iopipe and an earlier compiler, it will not link if you
+   use `IODev`.
+2. Because std.io is cross platform, iopipe is now completely cross platform,
+   including Windows support.
+3. A feature of `IODev` that is not in std.io is the ability to use a `FILE *`
+   or file descriptor and not close it when the class is destroyed.
+4. std.io more sensibly uses non-copyable structs instead of classes for
+   lifetime management. Because iopipe generally copies things around even
+   though it's only going to use one copy eventually, you may need to wrap the
+   IOs in ref counting or a class (both are supported by std.io).
 
 ### Valves
 
