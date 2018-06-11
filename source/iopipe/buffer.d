@@ -571,6 +571,7 @@ shared static this()
 {
     version (Windows)
     {
+        import core.sys.windows.windows;
         SYSTEM_INFO info;
         GetSystemInfo(&info);
 

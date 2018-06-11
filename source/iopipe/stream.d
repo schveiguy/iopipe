@@ -8,32 +8,35 @@ Authors:   Steven Schveighoffer
 module iopipe.stream;
 import std.io;
 
-/// Deprecated: use std.io directly
-deprecated alias IODev = IOObject!(File);
-
-/**
- * Construct an input stream based on the file descriptor
- *
- * params:
- * fd = The file descriptor to wrap
- *
- * Deprecated: Use https://code.dlang.org/io for low-level device i/o
- */
-deprecated("use std.io")
-auto openDev(int fd)
+version(Posix)
 {
-    return ioObject(File(fd));
-}
+    /// Deprecated: use std.io directly
+    deprecated alias IODev = IOObject!(File);
 
-/**
- * Open a file by name.
- *
- * Deprecated: Use https://code.dlang.org/io for low-level device i/o
- */
-deprecated("use std.io")
-auto openDev(in char[] name, Mode mode = Mode.read | Mode.binary)
-{
-    return ioObject(File(name, mode));
+    /**
+     * Construct an input stream based on the file descriptor
+     *
+     * params:
+     * fd = The file descriptor to wrap
+     *
+     * Deprecated: Use https://code.dlang.org/io for low-level device i/o
+     */
+    deprecated("use std.io")
+        auto openDev(int fd)
+        {
+            return ioObject(File(fd));
+        }
+
+    /**
+     * Open a file by name.
+     *
+     * Deprecated: Use https://code.dlang.org/io for low-level device i/o
+     */
+    deprecated("use std.io")
+        auto openDev(in char[] name, Mode mode = Mode.read | Mode.binary)
+        {
+            return ioObject(File(name, mode));
+        }
 }
 
 
