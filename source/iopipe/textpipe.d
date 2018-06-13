@@ -341,6 +341,20 @@ byline_outer_1:
                 immutable t = delimElems[0];
                 static if(isDynamicArray!(WindowType!(Chain)))
                 {
+                    if(__ctfe)
+                    {
+                        // don't use pointer tricks or memchr
+                        while(newChecked < w.length)
+                        {
+                            if(w[newChecked++] == t)
+                            {
+                                // found it.
+                                endsWithDelim = true;
+                                break byline_outer_1;
+                            }
+                        }
+                        continue;
+                    }
                     auto p = w.ptr + newChecked;
                     static if(CodeUnitType.sizeof == 1)
                     {
@@ -1088,3 +1102,19 @@ auto ref runEncoded(alias func, Chain, Args...)(Chain c, auto ref Args args)
 }
 
 // TODO: need unit tests here.
+//
+
+@safe nothrow unittest
+{
+    // try running byline range with a string in CTFE
+    import std.range : walkLength;
+    static void testit(Char)()
+    {
+        enum immutable(Char)[] str = "hello\nworld\nthis\nis\na\ntest";
+        static assert(str.byLineRange.walkLength == 6);
+    }
+
+    testit!char();
+    testit!wchar();
+    testit!dchar();
+}
