@@ -1,4 +1,4 @@
-# iopipe
+# iopipe [![Build Status](https://travis-ci.org/schveiguy/iopipe.svg?branch=master)](https://travis-ci.org/schveiguy/iopipe)
 D language library for modular io
 
 API documentation: http://schveiguy.github.io/iopipe
