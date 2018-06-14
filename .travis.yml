@@ -1,2 +1,4 @@
 language: d
-os: osx
+os:
+   - osx
+   - linux
