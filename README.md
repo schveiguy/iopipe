@@ -40,12 +40,14 @@ import iopipe.textpipe;
 import iopipe.zip;
 import iopipe.bufpipe;
 import std.io;
+import std.typecons;
 
 // open a zipfile, decompress it, detect the text encoding inside, and process
 // lines that contain "foo"
 void main(string[] args)
 {
     File(args[1])               // open a file
+         .refCounted            // File can't be copied
          .bufd                  // buffer it
          .unzip                 // decompress it
          .runEncoded!((input) { // detect the text encoding and process it.
