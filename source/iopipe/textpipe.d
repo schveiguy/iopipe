@@ -449,6 +449,8 @@ byline_outer_2:
     }
 
     size_t segments() { return _segments; }
+
+    mixin implementValve!chain;
 }
 
 /**
@@ -505,6 +507,12 @@ unittest
     p.process();
     assert(p.segments == 6);
     assert(p.delimTrailer == 0);
+
+    // add valve support
+    import iopipe.valve;
+    auto p2 = "hello world".simpleValve.delimitedText(' ');
+    auto orig = p2.valve;
+    assert(orig == "hello world");
 }
 
 /**
