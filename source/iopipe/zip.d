@@ -149,7 +149,7 @@ private struct UnzipSrc(Chain)
     {
         if(chain.window.length < 4096) // don't overallocate
         {
-            chain.extend(0);
+            cast(void)chain.extend(0);
             setupInput = true;
         }
         if(setupInput)
