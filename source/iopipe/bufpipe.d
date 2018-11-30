@@ -12,6 +12,7 @@ import iopipe.traits;
 import std.traits : isDynamicArray, hasMember;
 import std.range.primitives;
 
+
 /**
  * An example processor. This demonstrates the required items for implementing
  * an iopipe.
@@ -815,3 +816,54 @@ template iosrc(alias fun, Chain)
         return IOSource(c);
     }
 }
+
+// TODO: need to deal with general ranges.
+/**
+ * Write data from a random access range or character array into the given
+ * iopipe, and release all the data that was written. Note that this really
+ * only does anything of interest on iopipes that are writing on release (i.e.
+ * ones that have a push component).
+ *
+ * Params: c = The iopipe chain to write to.
+ *         data = The range to write to the chain.
+ *
+ * Returns: The number of elements written. This should match the elements of
+ * the range, but could potentially be less if there wasn't a way to extend
+ * more space and more space was needed.
+ */
+size_t writeBuf(Chain, Range)(ref Chain c, Range data) if (isIopipe!Chain &&
+      __traits(compiles, (c.window[0 .. 0] = data[0 .. 0])))
+{
+    // trivial case
+    if(data.length == 0)
+        return 0;
+
+    size_t result = data.length;
+
+    if(c.window.length == 0)
+        c.extend(0);
+
+    while(true)
+    {
+        const dlen = data.length;
+        const wlen = c.window.length;
+        if(wlen == 0)
+            return result - dlen;
+        if(wlen >= dlen)
+        {
+            c.window[0 .. dlen] = data[];
+            c.release(dlen);
+            return result;
+        }
+        else
+        {
+            c.window[] = data[0 .. wlen];
+            data = data[wlen .. $];
+            c.release(wlen);
+            // window is now empty, extend to get more space for writing
+            c.extend(0);
+        }
+    }
+}
+
+// TODO: need unittests for writeBuf
