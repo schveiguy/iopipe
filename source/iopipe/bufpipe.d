@@ -818,49 +818,82 @@ template iosrc(alias fun, Chain)
 }
 
 // TODO: need to deal with general ranges.
+import std.typecons;
+alias ReleaseOnWrite = Flag!"releaseOnWrite";
 /**
  * Write data from a random access range or character array into the given
- * iopipe, and release all the data that was written. Note that this really
- * only does anything of interest on iopipes that are writing on release (i.e.
- * ones that have a push component).
+ * iopipe. If relOnWrite is set to true (ReleaseOnWrite.yes), then all data
+ * before the provided offset, and any new data written to the pipe is always
+ * released. This is mainly useful for output buffers where you do not wish to
+ * allocate extra space in the buffer, and wish to flush the buffer when it's
+ * full.
+ *
+ * If relOnWrite is false, then the pipe data is not released, and you should
+ * consider the "written" part to be the offset + the return value.
  *
  * Params: c = The iopipe chain to write to.
  *         data = The range to write to the chain.
+ *         offset = The starting point to write the data.
+ *         relOnWrite = If true, data is released as it is written, otherwise,
+ *            it's not released.
  *
  * Returns: The number of elements written. This should match the elements of
  * the range, but could potentially be less if there wasn't a way to extend
  * more space and more space was needed.
  */
-size_t writeBuf(Chain, Range)(ref Chain c, Range data) if (isIopipe!Chain &&
-      __traits(compiles, (c.window[0 .. 0] = data[0 .. 0])))
+size_t writeBuf(ReleaseOnWrite relOnWrite = ReleaseOnWrite.yes, Chain, Range)(ref Chain c, Range data, size_t offset = 0)
+    if (isIopipe!Chain && __traits(compiles, (c.window[0 .. 0] = data[0 .. 0])))
 {
+    assert(offset <= c.window.length);
+    static if(relOnWrite)
+    {
+        // always release the offset bytes
+        if(offset)
+            c.release(offset);
+        enum offsetVal = 0;
+    }
+    else
+    {
+        // define an alias to help write the common code.
+        alias offsetVal = offset;
+    }
     // trivial case
     if(data.length == 0)
         return 0;
 
     size_t result = data.length;
 
-    if(c.window.length == 0)
+    if(c.window.length == offsetVal)
         c.extend(0);
 
     while(true)
     {
         const dlen = data.length;
-        const wlen = c.window.length;
+        const wlen = c.window.length - offsetVal;
         if(wlen == 0)
             return result - dlen;
         if(wlen >= dlen)
         {
-            c.window[0 .. dlen] = data[];
-            c.release(dlen);
+            c.window[offsetVal .. offsetVal + dlen] = data[];
+            static if(relOnWrite)
+            {
+                c.release(dlen);
+            }
             return result;
         }
         else
         {
-            c.window[] = data[0 .. wlen];
+            c.window[offsetVal .. $] = data[0 .. wlen];
             data = data[wlen .. $];
-            c.release(wlen);
-            // window is now empty, extend to get more space for writing
+            static if(relOnWrite)
+            {
+                c.release(wlen);
+            }
+            else
+            {
+                offsetVal += wlen;
+            }
+            // no more available buffer to write. Need to fetch more.
             c.extend(0);
         }
     }
