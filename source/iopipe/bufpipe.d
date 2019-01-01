@@ -552,15 +552,16 @@ private struct BufferedInputSource(BufferManager, Source, size_t optimalReadSize
  *         dev = The input stream to use. If not specified, then a NullDev source is assumed.
  *
  * Returns: An iopipe that uses the given buffer to read data from the given device source.
+ * The version which takes no parameter uses a NullDev as a source.
  */
 auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 * 1024 / T.sizeof, Source)(Source dev)
     if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
 {
-    return BufferedInputSource!(AllocatedBuffer!(T, Allocator), Source, optimalReadSize)(dev);
+    return BufferedInputSource!(AllocatedBuffer!(T, Allocator, optimalReadSize), Source, optimalReadSize)(dev);
 }
 
 /// ditto
-auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 * 1024 / T.sizeof)()
+auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = (T.sizeof > 4 ?  8 : 32 / T.sizeof))()
 {
     import iopipe.stream: nullDev;
     return nullDev.bufd!(T, Allocator, optimalReadSize)();
