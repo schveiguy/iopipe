@@ -743,9 +743,10 @@ unittest
     assert("hello, world!".SimplePipe!(string, 5).process() == 13);
 }
 
-private struct IoPipeRange(size_t extendRequestSize, Chain)
+private struct IoPipeRange(Chain)
 {
         Chain chain;
+        private size_t extendRequestSize;
         bool empty() { return chain.window.length == 0; }
         auto front() { return chain.window; }
         void popFront()
@@ -765,12 +766,12 @@ private struct IoPipeRange(size_t extendRequestSize, Chain)
  * Params: extendRequestSize = The value to pass to c.extend when calling popFront
  *         c = The chain to use as backing for this range.
  */
-auto asInputRange(size_t extendRequestSize = 0, Chain)(Chain c)// if(isIopipe!Chain)
+auto asInputRange(size_t extendRequestSize = 0, Chain)(Chain c) if (isIopipe!Chain)
 {
     if(c.window.length == 0)
         // attempt to prime the range, since empty will be true right away!
         c.extend(extendRequestSize);
-    return IoPipeRange!(extendRequestSize, Chain)(c);
+    return IoPipeRange!Chain(c, extendRequestSize);
 }
 
 unittest
@@ -782,6 +783,27 @@ unittest
         str = str[elem.length .. $];
     }
     assert(str.length == 0);
+}
+
+private struct IoPipeElemRange(Chain)
+{
+        Chain chain;
+        private size_t extendRequestSize;
+        bool empty() { return chain.window.length == 0; }
+        auto front() { return chain.window[0]; }
+        void popFront()
+        {
+            chain.release(1);
+            if(chain.window.length == 0)
+                chain.extend(extendRequestSize);
+        }
+}
+
+auto asElemRange(size_t extendRequestSize = 0, Chain)(Chain c) if (isIopipe!Chain)
+{
+    if(c.window.length == 0)
+        c.extend(extendRequestSize);
+    return IoPipeElemRange!Chain(c, extendRequestSize);
 }
 
 /**
