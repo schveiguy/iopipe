@@ -799,11 +799,31 @@ private struct IoPipeElemRange(Chain)
         }
 }
 
+/**
+ * Convert an io pipe into a range of elements of the pipe. This effectively
+ * converts an iopipe range of T into a range of T. Note that auto-decoding
+ * does NOT happen still, so converting a string into an input range produces a
+ * range of char. The range is extended when no more data is in the window.
+ *
+ * Note that the function may call extend once before returning, depending on
+ * whether there is any data present or not.
+ *
+ * Params: extendRequestSize = The value to pass to c.extend when calling in
+ *             popFront
+ *         c = The chain to use as backing for this range.
+ */
 auto asElemRange(size_t extendRequestSize = 0, Chain)(Chain c) if (isIopipe!Chain)
 {
     if(c.window.length == 0)
         c.extend(extendRequestSize);
     return IoPipeElemRange!Chain(c, extendRequestSize);
+}
+
+unittest {
+    auto str = "abcdefghijklmnopqrstuvwxyz";
+    import std.algorithm : equal;
+    import std.utf : byCodeUnit;
+    assert(equal(str.byCodeUnit, SimplePipe!(string, 5)(str).asElemRange));
 }
 
 /**
