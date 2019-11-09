@@ -139,12 +139,13 @@ providing the data further down the chain.
 ### IODev
 
 The `IODev` class has been deprecated, and is now an alias to Martin Nowak's
-[std.io](https://github.com/MartinNowak/io) library. At the moment, iopipe has
-io as a dependency, but it may remove that dependency once the deprecation is
-gone.
+[std.io](https://github.com/MartinNowak/io) library. The dependency on std.io
+is optional, and if not included, the `IODev` and related functions are only
+present if your project depends on std.io.
 
-Instead of using `openDev` or `IODev`, it is preferred to use std.io to open
-streams and then build iopipes on top of those.
+However, even when depending on std.io, instead of using `openDev` or `IODev`,
+it is preferred to use std.io to open streams and then build iopipes on top of
+those.
 
 Note a few things:
 
@@ -153,11 +154,9 @@ Note a few things:
    support for earlier compilers, use 0.0.4 of iopipe or earlier. If you use
    0.1.0 or later of iopipe and an earlier compiler, it will not link if you
    use `IODev`.
-2. Because std.io is cross platform, iopipe is now completely cross platform,
-   including Windows support.
-3. A feature of `IODev` that is not in std.io is the ability to use a `FILE *`
+2. A feature of `IODev` that is not in std.io is the ability to use a `FILE *`
    or file descriptor and not close it when the class is destroyed.
-4. std.io more sensibly uses non-copyable structs instead of classes for
+3. std.io more sensibly uses non-copyable structs instead of classes for
    lifetime management. Because iopipe generally copies things around even
    though it's only going to use one copy eventually, you may need to wrap the
    IOs in ref counting or a class (both are supported by std.io).

@@ -1,8 +1,14 @@
 import iopipe.textpipe;
 import iopipe.bufpipe;
-import iopipe.stream;
 import iopipe.valve;
 import std.format;
+import std.io;
+import std.typecons : refCounted;
+
+auto stdout()
+{
+    return File(1).refCounted;
+}
 
 // returns number of matches found
 size_t performSearch(UTFType utfType, Dev)(Dev dev, size_t contextLines, string[] terms)
@@ -11,7 +17,7 @@ size_t performSearch(UTFType utfType, Dev)(Dev dev, size_t contextLines, string[
     alias Char = CodeUnit!utfType;
     auto output = bufd!Char.push!(a => a
          .encodeText!(utfType)
-         .outputPipe(openDev(1)));
+         .outputPipe(stdout));
 
     // output range that doesn't auto-decode
     void writeOutput(const(Char)[] data)
@@ -105,7 +111,7 @@ size_t performSearch(UTFType utfType, Dev)(Dev dev, size_t contextLines, string[
 int main(string[] args)
 {
     import std.getopt;
-    import std.stdio;
+    import std.stdio : writefln, writeln, stderr;
     size_t contextLines = 2;
     bool useRing;
     auto helpInfo = args.getopt("context", &contextLines, "ring", &useRing);
@@ -123,10 +129,11 @@ int main(string[] args)
     }
 
     size_t result;
+    auto stdin = File(0).refCounted;
     if(useRing)
-        result = openDev(0).rbufd.runWithEncoding!performSearch(contextLines, args);
+        result = stdin.rbufd.runWithEncoding!performSearch(contextLines, args);
     else
-        result = openDev(0).bufd.runWithEncoding!performSearch(contextLines, args);
+        result = stdin.bufd.runWithEncoding!performSearch(contextLines, args);
     writefln("matched %s lines", result);
     return 0;
 }

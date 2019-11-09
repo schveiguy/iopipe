@@ -1,6 +1,5 @@
 import iopipe.textpipe;
 import iopipe.bufpipe;
-import iopipe.stream;
 import iopipe.buffer;
 import std.stdio;
 
@@ -23,8 +22,10 @@ void processLines(UTFType utfType, Dev)(Dev dev)
 
 void main(string[] args)
 {
+    import std.io;
+    import std.typecons : refCounted;
     if(args.length > 1 && args[1] == "-nooutput")
         doOutput = false;
-    openDev(0).bufd.runWithEncoding!processLines;
+    File(0).refCounted.bufd.runWithEncoding!processLines;
     stdout.flush();
 }
