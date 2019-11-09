@@ -1,11 +1,12 @@
 import iopipe.zip;
-import iopipe.stream;
 import iopipe.bufpipe;
+import std.io;
+import std.typecons : refCounted;
 
 void main()
 {
     // decompress the input into the output
-    auto nbytes = bufd(openDev(0)).zip(CompressionFormat.gzip).outputPipe(openDev(1)).process();
-    import std.stdio;
+    auto nbytes = bufd(File(0).refCounted).zip(CompressionFormat.gzip).outputPipe(File(1).refCounted).process();
+    import std.stdio : stderr;
     stderr.writefln("compressed %s bytes", nbytes);
 }

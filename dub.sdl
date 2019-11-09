@@ -3,34 +3,39 @@ description "A modular io library in D."
 copyright "Copyright © 2011-2018, Steven Schveighoffer"
 authors "Steven Schveighoffer" "Dmitry Olshansky"
 license "BSL-1.0"
-dependency "io" version="~>0.2.1"
+dependency "io" version="~>0.2.4" optional=true
 subPackage {
    name "byline"
    targetType "executable"
    sourcePaths "examples/byline"
    dependency "iopipe" version="*"
+   dependency "io" version="~>0.2.4"
 }
 subPackage {
    name "convert"
    targetType "executable"
    sourcePaths "examples/convert"
    dependency "iopipe" version="*"
+   dependency "io" version="~>0.2.4"
 }
 subPackage {
    name "unzip"
    targetType "executable"
    sourcePaths "examples/unzip"
    dependency "iopipe" version="*"
+   dependency "io" version="~>0.2.4"
 }
 subPackage {
    name "zip"
    targetType "executable"
    sourcePaths "examples/zip"
    dependency "iopipe" version="*"
+   dependency "io" version="~>0.2.4"
 }
 subPackage {
    name "search"
    targetType "executable"
    sourcePaths "examples/search"
    dependency "iopipe" version="*"
+   dependency "io" version="~>0.2.4"
 }
