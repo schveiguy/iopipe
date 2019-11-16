@@ -492,7 +492,7 @@ unittest
     assert(elems == 12);
 }
 
-private struct BufferedInputSource(BufferManager, Source, size_t optimalReadSize)
+struct BufferedInputSource(BufferManager, Source, size_t optimalReadSize)
 {
     Source dev;
     BufferManager buffer;
@@ -540,6 +540,10 @@ private struct BufferedInputSource(BufferManager, Source, size_t optimalReadSize
         buffer.releaseBack(buffer.window.length - oldLen - nread);
         return nread;
     }
+
+    // need to forward valves if we are going through rebuffered data.
+    static if(hasValve!Source)
+        mixin implementValve!dev;
 }
 
 /**
@@ -550,21 +554,26 @@ private struct BufferedInputSource(BufferManager, Source, size_t optimalReadSize
  *         Source = The type of the input stream. This must have a function
  *         `read` that can read into the buffer's window.
  *         dev = The input stream to use. If not specified, then a NullDev source is assumed.
+ *         args = Arguments passed to the allocator (for allocators that need initialization)
  *
  * Returns: An iopipe that uses the given buffer to read data from the given device source.
  * The version which takes no parameter uses a NullDev as a source.
  */
-auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 * 1024 / T.sizeof, Source)(Source dev)
+auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = 8 * 1024 / T.sizeof, Source, Args...)(Source dev, Args args)
     if(hasMember!(Source, "read") && is(typeof(dev.read(T[].init)) == size_t))
 {
-    return BufferedInputSource!(AllocatedBuffer!(T, Allocator, optimalReadSize), Source, optimalReadSize)(dev);
+    alias BM = AllocatedBuffer!(T, Allocator, optimalReadSize);
+    static if(Args.length > 0)
+        return BufferedInputSource!(BM, Source, optimalReadSize)(dev, BM(Allocator(args)));
+    else
+        return BufferedInputSource!(BM, Source, optimalReadSize)(dev);
 }
 
 /// ditto
-auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = (T.sizeof > 4 ?  8 : 32 / T.sizeof))()
+auto bufd(T=ubyte, Allocator = GCNoPointerAllocator, size_t optimalReadSize = (T.sizeof > 4 ?  8 : 32 / T.sizeof), Args...)(Args args)
 {
     import iopipe.stream: nullDev;
-    return nullDev.bufd!(T, Allocator, optimalReadSize)();
+    return nullDev.bufd!(T, Allocator, optimalReadSize)(args);
 }
 
 /**
@@ -600,6 +609,23 @@ auto rbufd(T=ubyte, size_t optimalReadSize = 8 * 1024 / T.sizeof)()
 {
     import iopipe.stream: nullDev;
     return nullDev.rbufd!(T, optimalReadSize)();
+}
+
+// allocate using a region buffer (convenience)
+auto lbufd(T=ubyte, size_t optimalReadSize = 128, Source)(Source dev, ubyte[] buf)
+{
+    import std.experimental.allocator.building_blocks.region;
+    // for now, we only support buffers at least large enough to hold the
+    // initial read.
+    assert(buf.length >= optimalReadSize);
+    return bufd!(T, Region!(), optimalReadSize)(dev, buf);
+}
+
+// allocate using a region buffer (convenience)
+auto lbufd(T=ubyte, size_t optimalReadSize = 128)(ubyte[] buf)
+{
+    import iopipe.stream : nullDev;
+    return lbufd!(T, optimalReadSize)(nullDev, buf);
 }
 
 unittest

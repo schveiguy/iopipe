@@ -143,7 +143,7 @@ template hasValve(T)
 {
     import std.traits : hasMember;
     static if(hasMember!(T, "valve"))
-        enum hasValve = isIopipe!T && isIopipe!(PropertyType!(T.init.valve));
+        enum hasValve = isIopipe!(PropertyType!(T.init.valve));
     else
         enum hasValve = false;
 }

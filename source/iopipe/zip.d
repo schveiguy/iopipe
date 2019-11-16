@@ -129,6 +129,8 @@ private struct ZipSrc(Chain)
         }
         return target.length - zstream.avail_out;
     }
+
+    mixin implementValve!chain;
 }
 
 private struct UnzipSrc(Chain)
@@ -265,6 +267,8 @@ private struct UnzipSrc(Chain)
         // return the number of bytes that were inflated
         return target.length - zstream.avail_out;
     }
+
+    mixin implementValve!chain;
 }
 
 /**

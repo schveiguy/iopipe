@@ -7,7 +7,27 @@ Authors:   Steven Schveighoffer
  */
 module iopipe.valve;
 import iopipe.traits;
-import std.traits : TemplateOf;
+import std.traits : TemplateOf, isType;
+
+private struct SimpleValve(Chain)
+{
+    Chain valve;
+
+    auto window()
+    {
+        return valve.window;
+    }
+
+    void release(size_t elements)
+    {
+        valve.release(elements);
+    }
+
+    size_t extend(size_t elements)
+    {
+        return valve.extend(elements);
+    }
+}
 
 /**
  * Create a simple valve in an iopipe chain.
@@ -18,32 +38,9 @@ import std.traits : TemplateOf;
  *
  * Returns: A new iopipe chain that provides a valve access point to the parameter.
  */
-template simpleValve(Chain) if (isIopipe!Chain)
+auto simpleValve(Chain)(Chain chain) if  (isIopipe!Chain)
 {
-    struct SimpleValve
-    {
-        Chain valve;
-
-        auto window()
-        {
-            return valve.window;
-        }
-
-        void release(size_t elements)
-        {
-            valve.release(elements);
-        }
-
-        size_t extend(size_t elements)
-        {
-            return valve.extend(elements);
-        }
-    }
-
-    auto simpleValve(Chain chain)
-    {
-        return SimpleValve(chain);
-    }
+    return SimpleValve!Chain(chain);
 }
 
 unittest
@@ -352,3 +349,48 @@ auto push(alias pipeline, bool autoFlush = true, Chain)(Chain c) if (isIopipe!(t
 }
 
 // TODO: need good example to show how to use this.
+
+
+/**
+ * Go down the chain of valves until you find a valve of the given type. This
+ * is useful if you know there is a pipe you are looking for in the chain of valves.
+ *
+ * Params:
+ *     T = type or template of valve you are looking for
+ *     pipe = iopipe you are searching
+ *
+ * Returns:
+ *     a valve of the specified type or template. If such a valve doesn't
+ *     exist, a static error occurs.
+ */
+auto valveOf(T, Chain)(ref Chain pipe) if (isType!T && isIopipe!Chain && hasValve!Chain)
+{
+    alias V = PropertyType!(pipe.valve);
+    static if(is(V == T))
+        return pipe.valve;
+    else static if(is(typeof(.valveOf!T(pipe.valve))))
+        return pipe.valve.valveOf!T;
+    else
+        static assert(0, "Pipe type " ~ Chain.stringof ~ " does not have valve of type " ~ T.stringof);
+}
+
+/// ditto
+auto valveOf(alias X, Chain)(ref Chain pipe) if (!isType!X && isIopipe!Chain && hasValve!Chain)
+{
+    alias V = PropertyType!(pipe.valve);
+    static if(__traits(isSame, TemplateOf!V, X))
+        return pipe.valve;
+    else static if(is(typeof(pipe.valve.valveOf!X)))
+        return pipe.valve.valveOf!T;
+    else
+        static assert(0, "Pipe type " ~ Chain.stringof ~ " does not have valve based on template " ~ T.stringof);
+}
+
+unittest
+{
+    string basepipe = "hello world";
+    auto p = basepipe.simpleValve.simpleValve;
+    assert(p.valveOf!string is basepipe);
+    alias T = typeof(p.valveOf!SimpleValve);
+    static assert(is(T == SimpleValve!string));
+}
