@@ -324,7 +324,7 @@ template autoFlush(Chain) if (__traits(hasMember, Chain, "flush"))
  * loop. It avoids having to explicitly specify the loop begin and end.
  *
  * Params:
- *    pipeline = a lambda template used to generate the the pipeline that will
+ *    pipeline = a lambda template used to generate the pipeline that will
  *    be set up as a push chain.
  *    autoFlush = true (default) if you wish to auto-flush the push pipeline
  *    when all references to it are gone. This moves the whole chain into a
