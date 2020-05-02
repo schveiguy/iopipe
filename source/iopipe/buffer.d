@@ -10,21 +10,23 @@ module iopipe.buffer;
 import std.experimental.allocator : IAllocator;
 import std.experimental.allocator.common : platformAlignment;
 
+
 /**
  * GC allocator that creates blocks of non-pointer data (unscanned). This also
  * does not support freeing data, relying on the GC to do so.
  */
 struct GCNoPointerAllocator
 {
+    @safe:
     import std.experimental.allocator.gc_allocator : GCAllocator;
     enum alignment = GCAllocator.alignment;
 
     /// Allocate some data
-    static void[] allocate(size_t size)
+    static void[] allocate(size_t size) @trusted
     {
         import core.memory : GC;
         auto p = GC.malloc(size, GC.BlkAttr.NO_SCAN);
-        return p ? p[0 .. size] : null;
+        return p ? (() @trusted => p[0 .. size])() : null;
     }
 
     /// Determine an appropriate size for allocation to hold the given size data
@@ -45,13 +47,17 @@ struct GCNoPointerAllocator
     static shared GCNoPointerAllocator instance;
 }
 
-unittest
+@safe unittest
 {
     import std.experimental.allocator.common: stateSize;
     static assert(!stateSize!GCNoPointerAllocator);
     import core.memory: GC;
     auto arr = GCNoPointerAllocator.instance.allocate(100);
-    assert((GC.getAttr(arr.ptr) & GC.BlkAttr.NO_SCAN) != 0);
+    @trusted static noScan(void *ptr)
+    {
+        return (GC.getAttr(ptr) & GC.BlkAttr.NO_SCAN) != 0;
+    }
+    assert(noScan(&arr[0]));
 
     // not much reason to test of it, as it's just a wrapper for GCAllocator.
 }
@@ -128,7 +134,7 @@ struct AllocatedBuffer(T, Allocator = GCNoPointerAllocator, size_t floorSize = 8
     /**
      * The window of currently valid data
      */
-    T[] window()
+    T[] window() @trusted
     {
         return buffer.ptr[released .. valid];
     }
@@ -194,13 +200,13 @@ struct AllocatedBuffer(T, Allocator = GCNoPointerAllocator, size_t floorSize = 8
             // try expanding, no further copying required
             if(buffer.ptr)
             {
-                void[] buftmp = cast(void[])buffer;
+                void[] buftmp = buffer;
                 auto reqSize = min(maxBufSize - buffer.length,  request - (buffer.length - valid));
                 if(allocator.expand(buftmp, reqSize * T.sizeof))
                 {
                     auto newElems = buffer.length - valid + reqSize;
                     valid += newElems;
-                    buffer = cast(T[])buftmp;
+                    buffer = (()@trusted => cast(T[])buftmp)();
                     return newElems;
                 }
             }
@@ -222,13 +228,13 @@ struct AllocatedBuffer(T, Allocator = GCNoPointerAllocator, size_t floorSize = 8
                 void[] buf = buffer;
                 if(allocator.reallocate(buf, newLen * T.sizeof))
                 {
-                    buffer = cast(T[])buf;
+                    buffer = (()@trusted => cast(T[])buf)();
                     valid += request;
                     return request;
                 }
             }
         }
-        auto newbuf = cast(T[])allocator.allocate(newLen * T.sizeof);
+        auto newbuf = (()@trusted => cast(T[])allocator.allocate(newLen * T.sizeof))();
         if(!newbuf.ptr)
             return 0;
         if (validElems > 0) {
@@ -251,7 +257,7 @@ private:
     size_t released;
 }
 
-unittest
+@safe unittest
 {
     static struct OOMAllocator
     {
@@ -278,23 +284,22 @@ unittest
     buf.releaseFront(50);
     assert(buf.avail == 78);
     assert(buf.capacity == 128);
-    assert(buf.window.ptr == arr.ptr + 50);
+    assert(&buf.window[0] == &arr[50]);
 
     assert(buf.extend(50) == 50);
     assert(buf.capacity == 128);
-    assert(buf.window.ptr == arr.ptr);
+    assert(&buf.window[0] == &arr[0]);
 
     assert(buf.extend(500) == 0);
     assert(buf.capacity == 128);
-    assert(buf.window.ptr == arr.ptr);
+    assert(&buf.window[0] == &arr[0]);
 
     assert(buf.extend(100) == 100);
-    assert(buf.window.ptr == arr.ptr + 128);
+    assert(&buf.window[0] == &arr[128]);
     assert(buf.avail == 0);
     assert(buf.capacity == 200);
 }
 
-// A ringbuffer works by mmapping the same block to 2 consecutive memory pages.
 // The type allocated MUST be a power of 2
 import std.math : isPowerOf2;
 
@@ -316,6 +321,10 @@ import std.math : isPowerOf2;
  * refcounted if you are to pass it around. See rbufd which does this
  * automatically for you. The reason for this is that it must unmap the memory
  * on destruction.
+ *
+ * Note that this buffer is not @safe, since it is possible on reallocation to
+ * have dangling pointers (if anything keeps a reference to the original
+ * memory).
  *
  * Params:
  *    T = The type of the elements the buffer will use. Must be sized as a power of 2.
@@ -361,7 +370,7 @@ struct RingBuffer(T, size_t floorSize = 8192) if (isPowerOf2(T.sizeof))
     /**
      * The window of currently valid data.
      */
-    T[] window()
+    T[] window() @system
     {
         assert(released <= buffer.length && valid <= buffer.length);
         return buffer.ptr[released .. valid];
@@ -393,7 +402,7 @@ struct RingBuffer(T, size_t floorSize = 8192) if (isPowerOf2(T.sizeof))
      * window. Note that this may be less than the request if more elements
      * could not be attained from the OS.
      */
-    size_t extend(size_t request)
+    size_t extend(size_t request) @system
     {
         import std.algorithm.mutation : copy;
         import std.algorithm.comparison : max, min;
@@ -506,6 +515,7 @@ struct RingBuffer(T, size_t floorSize = 8192) if (isPowerOf2(T.sizeof))
         valid = validElems + request;
         assert(valid <= newbuf.length / 2);
         released = 0;
+        // UNSAFE -- only use this in system code
         if(buffer.length)
             munmap(buffer.ptr, buffer.length * T.sizeof); // unmap the original memory
         buffer = newbuf;
@@ -513,7 +523,7 @@ struct RingBuffer(T, size_t floorSize = 8192) if (isPowerOf2(T.sizeof))
         return request;
     }
 
-    ~this()
+    ~this() @system
     {
         if(buffer.ptr)
         {
@@ -533,7 +543,7 @@ private:
     size_t released;
 }
 
-unittest
+@system unittest
 {
     RingBuffer!(ubyte, 8192) buf;
     assert(buf.extend(4096) == 4096);

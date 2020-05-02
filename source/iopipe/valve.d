@@ -43,7 +43,7 @@ auto simpleValve(Chain)(Chain chain) if  (isIopipe!Chain)
     return SimpleValve!Chain(chain);
 }
 
-unittest
+@safe unittest
 {
     import iopipe.bufpipe;
 
@@ -306,16 +306,22 @@ template autoFlush(Chain) if (__traits(hasMember, Chain, "flush"))
     {
         Chain c;
         alias c this;
-        ~this()
-        {
-            c.flush();
-        }
+        static if(is(typeof((Chain c) @safe { c.flush(); })))
+            ~this() @safe
+            {
+                c.flush();
+            }
+        else
+            ~this() @system
+            {
+                c.flush();
+            }
     }
 
     auto autoFlush(Chain c)
     {
-        import std.typecons: RefCounted, RefCountedAutoInitialize;
-        return RefCounted!(AutoFlusher, RefCountedAutoInitialize.no)(c);
+        import iopipe.refc;
+        return RefCounted!AutoFlusher(c);
     }
 }
 
@@ -386,7 +392,7 @@ auto valveOf(alias X, Chain)(ref Chain pipe) if (!isType!X && isIopipe!Chain && 
         static assert(0, "Pipe type " ~ Chain.stringof ~ " does not have valve based on template " ~ T.stringof);
 }
 
-unittest
+@safe unittest
 {
     string basepipe = "hello world";
     auto p = basepipe.simpleValve.simpleValve;

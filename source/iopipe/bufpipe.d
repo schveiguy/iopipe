@@ -128,7 +128,7 @@ struct SimplePipe(Chain, size_t extendElementsDefault = 1) if(isIopipe!Chain)
 }
 
 ///
-unittest
+@safe unittest
 {
     // any array is a valid iopipe source.
     auto source = "hello, world!";
@@ -163,7 +163,7 @@ unittest
     assert(pipe.extend(1) == 0);
 }
 
-unittest
+@safe unittest
 {
     import std.range : iota, array;
     import std.algorithm : equal;
@@ -195,21 +195,25 @@ private void swapBytes(R)(R data) if(typeof(R.init[0]).sizeof == 4 || typeof(R.i
     {
         // TODO: this only works for arrays.
         ushort[] sdata = cast(ushort[])data;
-        if((cast(size_t)sdata.ptr & 0x03) != 0)
-        {
-            // first element not 4-byte aligned, do that one by hand
-            *sdata.ptr = ((*sdata.ptr << 8) & 0xff00) |
-                ((*sdata.ptr >> 8) & 0x00ff);
-            sdata.popFront();
-        }
+        () @trusted {
+            assert(sdata.length > 0);
+            if((cast(size_t)sdata.ptr & 0x03) != 0)
+            {
+                // first element not 4-byte aligned, do that one by hand
+                *sdata.ptr = ((*sdata.ptr << 8) & 0xff00) |
+                    ((*sdata.ptr >> 8) & 0x00ff);
+                sdata.popFront();
+            }
 
-        // handle misaligned last element
-        if(sdata.length % 2 != 0)
-        {
-            sdata[$-1] = ((sdata[$-1] << 8) & 0xff00) |
-                ((sdata[$-1] >> 8) & 0x00ff);
-            sdata.popBack();
-        }
+            // handle misaligned last element
+            if(sdata.length % 2 != 0)
+            {
+                const last = sdata.length - 1;
+                sdata.ptr[last] = ((sdata.ptr[last] << 8) & 0xff00) |
+                    ((sdata.ptr[last] >> 8) & 0x00ff);
+                sdata.popBack();
+            }
+        }();
 
         // rest of the data is 4-byte multiple and aligned
         // TODO:  see if this can be optimized further, or if there are
@@ -232,9 +236,9 @@ private void swapBytes(R)(R data) if(typeof(R.init[0]).sizeof == 4 || typeof(R.i
     }
 }
 
-unittest
+@safe unittest
 {
-    void doIt(T)(T[] t)
+    void doIt(T)(T[] t) @safe
     {
         import std.algorithm;
         import std.range;
@@ -313,7 +317,7 @@ auto byteSwapper(bool littleEndian = !IsLittleEndian, Chain)(Chain c) if(isIopip
     }
 }
 
-unittest
+@safe unittest
 {
     import std.algorithm;
     auto arr = [1, 2, 3, 4, 5];
@@ -321,7 +325,7 @@ unittest
     assert(c.window.equal(arr.map!(a => (a << 24))));
 }
 
-private struct ArrayCastPipe(Chain, T)
+private struct ArrayCastPipe(Chain, T) if(isIopipe!(Chain) && isDynamicArray!(WindowType!(Chain)))
 {
     Chain chain;
     // upstream element type
@@ -340,7 +344,7 @@ private struct ArrayCastPipe(Chain, T)
         static assert(T.sizeof % UE.sizeof == 0);
     }
 
-    auto window()
+    auto window() @trusted
     {
         static if(UE.sizeof > T.sizeof)
         {
@@ -418,7 +422,7 @@ private struct ArrayCastPipe(Chain, T)
  *
  * Returns: New pipe chain with new array type.
  */
-auto arrayCastPipe(T, Chain)(Chain c) if(isIopipe!(Chain) && isDynamicArray!(WindowType!(Chain)))
+auto arrayCastPipe(T, Chain)(Chain c) @safe if(isIopipe!(Chain) && isDynamicArray!(WindowType!(Chain)))
 {
     static if(is(typeof(c.window[0]) == T))
         return c;
@@ -426,7 +430,7 @@ auto arrayCastPipe(T, Chain)(Chain c) if(isIopipe!(Chain) && isDynamicArray!(Win
         return ArrayCastPipe!(Chain, T)(c);
 }
 
-unittest
+@safe unittest
 {
     // test going from int to ubyte
     auto arr = [1, 2, 3, 4, 5];
@@ -467,7 +471,7 @@ size_t ensureElems(Chain)(ref Chain chain, size_t elems = size_t.max)
     return chain.window.length;
 }
 
-unittest
+@safe unittest
 {
     auto p = SimplePipe!(string)("hello, world");
     assert(p.ensureElems(5) == 5);
@@ -479,7 +483,7 @@ unittest
 }
 
 // bug #11
-unittest
+@safe unittest
 {
     auto x = "hello, world".iosrc!((ref c, b) {
                                    if(b.length > c.window.length)
@@ -628,7 +632,7 @@ auto lbufd(T=ubyte, size_t optimalReadSize = 128)(ubyte[] buf)
     return lbufd!(T, optimalReadSize)(nullDev, buf);
 }
 
-unittest
+@safe unittest
 {
     // simple struct that "reads" data from a pre-defined string array into a char buffer.
     static struct ArrayReader
@@ -653,7 +657,8 @@ unittest
         assert(p.extend(0) == 0);
     }
     test(ArrayReader("hello, world!").bufd!char);
-    test(ArrayReader("hello, world!").rbufd!char);
+    // ring buffers are @system
+    () @trusted { test(ArrayReader("hello, world!").rbufd!char); }();
 }
 
 private struct OutputPipe(Chain, Sink)
@@ -723,7 +728,7 @@ auto outputPipe(Chain, Sink)(Chain c, Sink dev) if(isIopipe!Chain && is(typeof(d
     return result;
 }
 
-unittest
+@safe unittest
 {
     // shim that simply verifies the data is correct
     static struct OutputStream
@@ -764,7 +769,7 @@ size_t process(Chain)(auto ref Chain c)
     return result;
 }
 
-unittest
+@safe unittest
 {
     assert("hello, world!".SimplePipe!(string, 5).process() == 13);
 }
@@ -800,7 +805,7 @@ auto asInputRange(size_t extendRequestSize = 0, Chain)(Chain c) if (isIopipe!Cha
     return IoPipeRange!Chain(c, extendRequestSize);
 }
 
-unittest
+@safe unittest
 {
     auto str = "abcdefghijklmnopqrstuvwxyz";
     foreach(elem; str.SimplePipe!(string, 5).asInputRange)
@@ -845,7 +850,7 @@ auto asElemRange(size_t extendRequestSize = 0, Chain)(Chain c) if (isIopipe!Chai
     return IoPipeElemRange!Chain(c, extendRequestSize);
 }
 
-unittest {
+@safe unittest {
     auto str = "abcdefghijklmnopqrstuvwxyz";
     import std.algorithm : equal;
     import std.utf : byCodeUnit;

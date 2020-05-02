@@ -215,7 +215,7 @@ auto ensureDecodeable(Chain)(Chain c) if (isIopipe!Chain && isSomeChar!(ElementE
     }
 }
 
-unittest
+@safe unittest
 {
     // check that ensureDecodeable just returns itself when called twice
     auto str = "hello";
@@ -261,7 +261,7 @@ auto assumeText(UTFType enc = UTFType.UTF8, Chain)(Chain c) if (isIopipe!Chain &
         static assert(0);
 }
 
-unittest
+@safe unittest
 {
     import std.algorithm : equal;
     import core.bitop : bswap;
@@ -331,77 +331,126 @@ private struct DelimitedTextPipe(Chain)
     {
         auto newChecked = checked;
         endsWithDelim = false;
-        if(validDelimElems == 1)
+        const ve = validDelimElems;
+        //if(validDelimElems == 1)
         {
-            // simple scan per element
+            // scan for first delimiter element
 byline_outer_1:
             do
             {
+                // make sure we don't even get into a check if we don't have enough elements to check.
                 auto w = chain.window;
+                if(newChecked + ve > w.length)
+                    continue;
                 immutable t = delimElems[0];
                 static if(isDynamicArray!(WindowType!(Chain)))
                 {
                     if(__ctfe)
                     {
                         // don't use pointer tricks or memchr
-                        while(newChecked < w.length)
+ctfe_while:
+                        while(newChecked + ve <= w.length)
                         {
                             if(w[newChecked++] == t)
                             {
-                                // found it.
+                                // found first element, look for the others
+                                foreach(i; 1 .. ve)
+                                    if(w[newChecked] != delimElems[i])
+                                        continue ctfe_while;
+                                    else
+                                        ++newChecked;
                                 endsWithDelim = true;
                                 break byline_outer_1;
                             }
                         }
                         continue;
                     }
-                    auto p = w.ptr + newChecked;
-                    static if(CodeUnitType.sizeof == 1)
+
+                    // search for the first delimiter element using @system methods
+                    bool search() @trusted
                     {
-                        // can use memchr
-                        import core.stdc.string: memchr;
-                        auto delimp = cast(typeof(p))memchr(p, t, w.length - newChecked);
-                        if(delimp != null)
+                        auto p = w.ptr + newChecked;
+                        static if(CodeUnitType.sizeof == 1)
                         {
-                            // found it
-                            newChecked = delimp + 1 - w.ptr;
-                            endsWithDelim = true;
-                            break byline_outer_1;
+                            // can use memchr
+                            import core.stdc.string: memchr;
+                            // should be true because we check at the beginning of the loop.
+                            assert(newChecked + (ve - 1) <= w.length);
+                            auto delimp = cast(typeof(p))memchr(p, t, w.length - newChecked - (ve - 1));
+                            if(delimp != null)
+                            {
+                                // found it
+                                newChecked = delimp + 1 - w.ptr;
+                                endsWithDelim = true;
+                                return true;
+                            }
+                        }
+                        else
+                        {
+                            auto e = w.ptr + w.length - (ve - 1);
+                            while(p < e)
+                            {
+                                if(*p++ == t)
+                                {
+                                    // found it
+                                    newChecked = p - w.ptr;
+                                    endsWithDelim = true;
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    }
+
+                    if(search())
+                    {
+                        // found the first delimeter element. If multiple exist,
+                        // we need to check those as well.
+                        if(ve != 1)
+                        {
+                            size_t i = 1;
+                            while(i < ve)
+                            {
+                                // TODO: should we optimize this?
+                                if(w[newChecked] != delimElems[i])
+                                    break;
+                                ++newChecked;
+                                ++i;
+                            }
+                            if(i == ve)
+                                break byline_outer_1;
+
                         }
                     }
                     else
-                    {
-                        auto e = w.ptr + w.length;
-                        while(p < e)
-                        {
-                            if(*p++ == t)
-                            {
-                                // found it
-                                newChecked = p - w.ptr;
-                                endsWithDelim = true;
-                                break byline_outer_1;
-                            }
-                        }
-                    }
-                    newChecked = w.length;
+                        newChecked = w.length - (ve - 1);
                 }
                 else
                 {
-                    while(newChecked < w.length)
+                    while(newChecked + ve <= w.length)
                     {
-                        if(w[newChecked] == t)
+                        if(w[newChecked++] == t)
                         {
-                            // found it.
-                            ++newChecked;
+                            // found first element, look for the others
+                            foreach(i; 1 .. ve)
+                                if(w[newChecked] != delimElems[i])
+                                    continue ctfe_while;
+                                else
+                                    ++newChecked;
                             endsWithDelim = true;
                             break byline_outer_1;
                         }
-                        ++newChecked;
                     }
                 }
             } while(chain.extend(elements) != 0);
+
+            if(!endsWithDelim)
+            {
+                // ran out of data
+                newChecked = chain.window.length;
+            }
         }
-        else // shouldn't be compiled in the case of dchar
+        /*else // shouldn't be compiled in the case of dchar
         {
             // need to check multiple elements
 byline_outer_2:
@@ -437,7 +486,7 @@ byline_outer_2:
                     break;
                 }
             }
-        }
+        }*/
 
         auto prevChecked = checked;
         if(checked != newChecked)
@@ -493,7 +542,7 @@ auto delimitedText(Chain)(Chain c, dchar delim = '\n')
     return result;
 }
 
-unittest
+@safe unittest
 {
     auto p = "hello world, this is a test".delimitedText(' ');
     p.extend;
@@ -598,7 +647,7 @@ auto byLineRange(bool KeepDelimiter = false, Chain)(Chain c)
     return byDelimRange!(KeepDelimiter)(c, '\n');
 }
 
-unittest
+@safe unittest
 {
     import std.algorithm : equal;
     assert("hello\nworld".byLineRange.equal(["hello", "world"]));
@@ -659,11 +708,11 @@ static struct TextOutput(Chain)
                         mask >>= 1;
                     }
                     buf[idx] = (c2 | (~mask << 1)) & 0xff;
-                    auto x = buf.ptr[idx..buf.length]; 
-                    if(chain.ensureElems(x.length) < x.length)
+                    const elems = buf.length - idx;
+                    if(chain.ensureElems(elems) < elems)
                         assert(0);
-                    chain.window[0 .. x.length] = x;
-                    chain.release(x.length);
+                    chain.window[0 .. elems] = buf[idx .. $];
+                    chain.release(elems);
                 }
             }
             else static if(is(CT == wchar))
@@ -748,7 +797,7 @@ auto textOutput(Chain)(Chain c)
 }
 
 ///
-unittest
+@safe unittest
 {
     import std.range : put;
     // use a writeable buffer as output.
@@ -802,7 +851,7 @@ auto convertText(Char = char, bool ensureBOM = false, Chain)(Chain chain) if (is
         return chain.textConverter!ensureBOM.bufd!Char;
 }
 
-unittest
+@safe unittest
 {
     // test converting char[] to wchar[]
     auto inpipe = "hello";
@@ -1027,7 +1076,7 @@ auto encodeText(UTFType enc = UTFType.UTF8, Chain)(Chain c)
         assert(0);
 }
 
-unittest
+@safe unittest
 {
     import core.bitop : bswap;
     // ensure that we properly byteswap.

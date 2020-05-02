@@ -39,7 +39,7 @@ void release(T)(ref T[] t, size_t elements)
     t = t[elements .. $];
 }
 
-unittest
+@safe unittest
 {
     // ensure an array is a valid iopipe
     static assert(isIopipe!(ubyte[]));
@@ -76,7 +76,7 @@ template isIopipe(T)
         }));
 }
 
-unittest
+@safe unittest
 {
     import std.meta: AliasSeq;
     import std.traits: isNarrowString;
@@ -127,7 +127,7 @@ template WindowType(T)
     alias WindowType = PropertyType!(T.init.window);
 }
 
-unittest
+@safe unittest
 {
     static struct S1 { ubyte[] window; }
     static assert(is(WindowType!S1 == ubyte[]));
@@ -160,7 +160,7 @@ mixin template implementValve(alias pipechain)
         ref valve() { return pipechain.valve; }
 }
 
-unittest
+@safe unittest
 {
     static struct S1
     {
@@ -201,7 +201,7 @@ template valveCount(T)
     }
 }
 
-unittest
+@safe unittest
 {
     static struct ValveStruct(T, bool shouldAddValve)
     {
