@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8"/>
-		<title>Enum member isIopipe</title>
+		<title>Function asElemRange</title>
 		<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
 		<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
 		<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script>
@@ -31,7 +31,7 @@ $('#symbolSearchPane').show();</script>
 					</div>
 				</li>
 				<li>
-					<div class="module ">
+					<div class="module selected">
 						<a href="../../iopipe/bufpipe.html">bufpipe</a>
 					</div>
 				</li>
@@ -51,7 +51,7 @@ $('#symbolSearchPane').show();</script>
 					</div>
 				</li>
 				<li>
-					<div class="module selected">
+					<div class="module ">
 						<a href="../../iopipe/traits.html">traits</a>
 					</div>
 				</li>
@@ -70,30 +70,38 @@ $('#symbolSearchPane').show();</script>
 			</ul>
 		</nav>
 		<div id="main-contents">
-			<h1>Enum member isIopipe</h1><p>evaluates to true if the given type is a valid ioPipe
+			<h1>Function asElemRange</h1><p>Convert an io pipe into a range of elements of the pipe. This effectively
+ converts an iopipe range of T into a range of T. Note that auto-decoding
+ does NOT happen still, so converting a string into an input range produces a
+ range of char. The range is extended when no more data is in the window.
 </p>
 			<div class="prototype">
 				<code class="lang-d">
 					<div class="single-prototype">
-			<span class="kwd">enum</span> <span class="pln">isIopipe</span>(T)
-			 <span class="pun">=</span> <span class="kwd">is</span><span class="pun">(</span><span class="kwd">typeof</span><span class="pun">(()
-{
-</span><span class="kwd">import </span><span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">range<wbr/></span><span class="pun">.</span><span class="pln">primitives</span><span class="pun">;
-</span><span class="kwd">import </span><span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">traits</span><span class="pun">;
-</span><span class="kwd">auto </span><span class="pln">t </span><span class="pun">= </span><span class="pln">T<wbr/></span><span class="pun">.</span><span class="pln">init</span><span class="pun">;
-</span><span class="kwd">auto </span><span class="pln">window </span><span class="pun">= </span><span class="pln">t<wbr/></span><span class="pun">.</span><span class="pln">window</span><span class="pun">;
-</span><span class="kwd">alias </span><span class="pln">W </span><span class="pun">= </span><span class="kwd">typeof</span><span class="pun">(</span><span class="pln">window</span><span class="pun">);
-</span><span class="kwd">static assert</span><span class="pun">(</span><span class="pln">isNarrowString</span><span class="pun">!</span><span class="pln">W </span><span class="pun">|| </span><span class="pln">isRandomAccessRange</span><span class="pun">!</span><span class="pln">W</span><span class="pun">);
-</span><span class="kwd">auto </span><span class="pln">x </span><span class="pun">= </span><span class="pln">t<wbr/></span><span class="pun">.</span><span class="pln">extend</span><span class="pun">(</span><span class="pln">size_t</span><span class="pun">(</span><span class="lit">0</span><span class="pun">));
-</span><span class="kwd">static assert</span><span class="pun">(</span><span class="kwd">is</span><span class="pun">(</span><span class="kwd">typeof</span><span class="pun">(</span><span class="pln">x</span><span class="pun">) == </span><span class="pln">size_t</span><span class="pun">));
-</span><span class="pln">t<wbr/></span><span class="pun">.</span><span class="pln">release</span><span class="pun">(</span><span class="pln">size_t</span><span class="pun">(</span><span class="lit">0</span><span class="pun">));
-}
-))</span><span class="pun">;</span>
+			<span class="kwd">auto</span> <span class="pln">asElemRange</span>(<span class="typ">ulong</span> extendRequestSize<span class="pln"> </span><span class="pun">= </span><span class="lit">0</span>, Chain)
+			<span class="pun">(</span>
+			<br/>
+			&nbsp;&nbsp;<span class="typ">Chain</span> <span class="pln">c</span>
+			<br/>
+			<span class="pun">)</span>
+			<br/>
+			<span class="kwd">if</span> <span class="pun">(</span><span class="pln">isIopipe</span><span class="pun">!</span><span class="typ">Chain</span><span class="pun">);</span>
 					</div>
 				</code>
 			</div>
-			
-			
+			<section><p>Note that the function may call extend once before returning, depending on
+ whether there is any data present or not.
+</p>
+</section>
+
+			<section><h2>Parameters</h2>
+<table><col class="caption"><tr><th>Name</th><th>Description</th></tr>
+<tr><td id="extendRequestSize">extendRequestSize</td><td> The value to pass to c.extend when calling in
+             popFront</td></tr>
+<tr><td id="c">c</td><td> The chain to use as backing for this range.</td></tr>
+</table>
+</section>
+
 			<footer>
 				<table class="license-info">
 					<tr>

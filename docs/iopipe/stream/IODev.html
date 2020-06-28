@@ -1,23 +1,186 @@
-<!DOCTYPE html><html><head>
-<meta charset="UTF-8"/>
-<title>Alias IODev</title>
-<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
-<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
-<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script></head><body onload="setupDdox();"><nav id="main-nav"><noscript><p style="color: red">The search functionality needs JavaScript enabled</p></noscript><div id="symbolSearchPane" style="display: none"><form action="#" method="GET">
-<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
-$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module selected"><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module "><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Alias IODev</h1><p></p><div class="prototype"><code class="lang-d"><div class="single-prototype">
-<span class="kwd">alias</span> <span class="kwd">deprecated </span><span class="pln">IODev</span>
- <span class="pun">=</span> <span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">io<wbr/></span><span class="pun">.</span><span class="typ">IOObject</span>!(std.io.file.File)<span class="pun">;</span></div></code></div>
-<section><h2>Deprecated</h2>
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<title>IODev - multiple declarations</title>
+		<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
+		<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
+		<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script>
+	</head>
+	<body onload="setupDdox();">
+		<nav id="main-nav">
+			<noscript>
+				<p style="color: red">The search functionality needs JavaScript enabled</p>
+			</noscript>
+			<div id="symbolSearchPane" style="display: none">
+				<form action="#" method="GET">
+					<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/>
+				</form>
+				<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+$('#symbolSearchPane').show();</script>
+			</div>
+			<ul class="tree-view">
+				<li class="tree-view ">
+					<div class="package ">
+						<a href="../../iopipe.html">iopipe</a>
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/buffer.html">buffer</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/bufpipe.html">bufpipe</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/refc.html">refc</a>
+					</div>
+				</li>
+				<li>
+					<div class="module selected">
+						<a href="../../iopipe/stream.html">stream</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/textpipe.html">textpipe</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/traits.html">traits</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/valve.html">valve</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/zip.html">zip</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+			</ul>
+		</nav>
+		<div id="main-contents">
+			<h1>IODev - multiple declarations</h1>
+			<nav class="page-nav">
+				<ul>
+					<li>
+						<a href="#0">
+							Alias <code>IODev</code>
+						</a>
+					</li>
+					<li>
+						<a href="#1">
+							Alias <code>IODev</code>
+						</a>
+					</li>
+					<li>
+						<a href="#2">
+							Alias <code>IODev</code>
+						</a>
+					</li>
+					<li>
+						<a href="#3">
+							Alias <code>IODev</code>
+						</a>
+					</li>
+				</ul>
+			</nav><h2 id="0">Alias IODev</h2><p></p>
+			<div class="prototype">
+				<code class="lang-d">
+					<div class="single-prototype">
+			<span class="kwd">alias</span> <span class="kwd">deprecated </span><span class="pln">IODev</span>
+			 <span class="pun">=</span> <span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">io<wbr/></span><span class="pun">.</span><span class="typ">IOObject</span>!(std.io.file.File)<span class="pun">;</span>
+					</div>
+				</code>
+			</div>
+			
+			<section><h3>Deprecated</h3>
+<p>use std.io directly
+</p>
+</section>
+<h2 id="1">Alias IODev</h2><p></p>
+			<div class="prototype">
+				<code class="lang-d">
+					<div class="single-prototype">
+			<span class="kwd">alias</span> <span class="kwd">deprecated </span><span class="pln">IODev</span>
+			 <span class="pun">=</span> <span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">io<wbr/></span><span class="pun">.</span><span class="typ">IOObject</span>!(std.io.file.File)<span class="pun">;</span>
+					</div>
+				</code>
+			</div>
+			
+			<section><h3>Deprecated</h3>
+<p>use std.io directly
+</p>
+</section>
+<h2 id="2">Alias IODev</h2><p></p>
+			<div class="prototype">
+				<code class="lang-d">
+					<div class="single-prototype">
+			<span class="kwd">alias</span> <span class="kwd">deprecated </span><span class="pln">IODev</span>
+			 <span class="pun">=</span> <span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">io<wbr/></span><span class="pun">.</span><span class="typ">IOObject</span>!(std.io.file.File)<span class="pun">;</span>
+					</div>
+				</code>
+			</div>
+			
+			<section><h3>Deprecated</h3>
+<p>use std.io directly
+</p>
+</section>
+<h2 id="3">Alias IODev</h2><p></p>
+			<div class="prototype">
+				<code class="lang-d">
+					<div class="single-prototype">
+			<span class="kwd">alias</span> <span class="kwd">deprecated </span><span class="pln">IODev</span>
+			 <span class="pun">=</span> <span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">io<wbr/></span><span class="pun">.</span><span class="typ">IOObject</span>!(std.io.file.File)<span class="pun">;</span>
+					</div>
+				</code>
+			</div>
+			
+			<section><h3>Deprecated</h3>
 <p>use std.io directly
 </p>
 </section>
 
-<footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer
+			<footer>
+				<table class="license-info">
+					<tr>
+						<th>Authors</th>
+						<td>
+							<p>Steven Schveighoffer
 </p>
-</td></tr><tr><th>Copyright</th><td><p>Copyright Steven Schveighoffer 2011-.
+
+						</td>
+					</tr>
+					<tr>
+						<th>Copyright</th>
+						<td>
+							<p>Copyright Steven Schveighoffer 2011-.
 </p>
-</td></tr><tr><th>License</th><td><p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+
+						</td>
+					</tr>
+					<tr>
+						<th>License</th>
+						<td>
+							<p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
 at http://www.boost.org/LICENSE_1_0.txt)
 </p>
-</td></tr></table><p class="faint">Generated using the DDOX documentation generator</p></footer></div></body></html>
+
+						</td>
+					</tr>
+				</table>
+				<p class="faint">Generated using the DDOX documentation generator</p>
+			</footer>
+		</div>
+	</body>
+</html>

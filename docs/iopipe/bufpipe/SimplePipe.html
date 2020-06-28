@@ -1,44 +1,186 @@
-<!DOCTYPE html><html><head>
-<meta charset="UTF-8"/>
-<title>Struct SimplePipe</title>
-<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
-<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
-<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script></head><body onload="setupDdox();"><nav id="main-nav"><noscript><p style="color: red">The search functionality needs JavaScript enabled</p></noscript><div id="symbolSearchPane" style="display: none"><form action="#" method="GET">
-<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
-$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module selected"><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module "><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module "><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Struct SimplePipe</h1><p>An example processor. This demonstrates the required items for implementing
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<title>Struct SimplePipe</title>
+		<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
+		<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
+		<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script>
+	</head>
+	<body onload="setupDdox();">
+		<nav id="main-nav">
+			<noscript>
+				<p style="color: red">The search functionality needs JavaScript enabled</p>
+			</noscript>
+			<div id="symbolSearchPane" style="display: none">
+				<form action="#" method="GET">
+					<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/>
+				</form>
+				<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+$('#symbolSearchPane').show();</script>
+			</div>
+			<ul class="tree-view">
+				<li class="tree-view ">
+					<div class="package ">
+						<a href="../../iopipe.html">iopipe</a>
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/buffer.html">buffer</a>
+					</div>
+				</li>
+				<li>
+					<div class="module selected">
+						<a href="../../iopipe/bufpipe.html">bufpipe</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/refc.html">refc</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/stream.html">stream</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/textpipe.html">textpipe</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/traits.html">traits</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/valve.html">valve</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/zip.html">zip</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+			</ul>
+		</nav>
+		<div id="main-contents">
+			<h1>Struct SimplePipe</h1><p>An example processor. This demonstrates the required items for implementing
  an iopipe.
-</p><div class="prototype"><code class="lang-d"><div class="single-prototype"><span class="kwd">struct</span> <span class="typ">SimplePipe</span>(Chain, <span class="typ">ulong</span> extendElementsDefault<span class="pln"> </span><span class="pun">= </span><span class="lit">1</span>)
-<br/>
-&nbsp;&nbsp;
-<br/>
-<span class="kwd">if</span> <span class="pun">(</span><span class="pln">isIopipe</span><span class="pun">!</span><span class="typ">Chain</span><span class="pun">);</span></div></code></div><section><p>SimplePipe will only extend exactly the elements requested (from what is
+</p>
+			<div class="prototype">
+				<code class="lang-d">
+					<div class="single-prototype">
+			<span class="kwd">struct</span> <span class="typ">SimplePipe</span>(Chain, <span class="typ">ulong</span> extendElementsDefault<span class="pln"> </span><span class="pun">= </span><span class="lit">1</span>)
+			<br/>
+			&nbsp;&nbsp;
+			<br/>
+			<span class="kwd">if</span> <span class="pun">(</span><span class="pln">isIopipe</span><span class="pun">!</span><span class="typ">Chain</span><span class="pun">);</span>
+					</div>
+				</code>
+			</div>
+			<section><p>SimplePipe will only extend exactly the elements requested (from what is
  availble), so it can be used for testing with a static buffer to simulate
  data coming in at any rate.
 </p>
 </section>
-<section><h2>Constructors</h2><table>
-<col class="caption"/>
-<tr><th>Name</th><th>Description</th></tr><tr><td><a href="../../iopipe/bufpipe/SimplePipe.this.html" class="[&quot;public&quot;]"><code>this</code></a></td><td>Build on top of an existing chain
-</td></tr></table></section><section><h2>Fields</h2><table>
-<col class="caption"/>
-<tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td><a href="../../iopipe/bufpipe/SimplePipe.chain.html" class="[&quot;public&quot;]"><code>chain</code></a></td><td class="typecol"><code class="prettyprint lang-d"><span class="typ">Chain</span></code></td><td>The upstream data. This can be any iopipe. Throughout the library, the
+
+			<section><h2>Constructors</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/bufpipe/SimplePipe.this.html" class="public">
+								<code>this</code>
+							</a>
+							<span class="tableEntryAnnotation">(c)</span>
+						</td>
+						<td>Build on top of an existing chain
+</td>
+					</tr>
+				</table>
+			</section>
+			<section><h2>Fields</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Type</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/bufpipe/SimplePipe.chain.html" class="public"><code>chain</code></a>
+						</td>
+						<td class="typecol"><code class="prettyprint lang-d"><span class="typ">Chain</span></code></td><td>The upstream data. This can be any iopipe. Throughout the library, the
  upstream data is generally saved as a member called "chain" as a matter
  of convention. This is not required or expected.
-</td></tr></table></section><section><h2>Methods</h2><table>
-<col class="caption"/>
-<tr><th>Name</th><th>Description</th></tr><tr><td><a href="../../iopipe/bufpipe/SimplePipe.extend.html" class="[&quot;public&quot;]"><code>extend</code></a></td><td>Get more data from the pipe. The parameter indicates the desired number
+</td>
+					</tr>
+				</table>
+			</section>
+			<section><h2>Methods</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/bufpipe/SimplePipe.extend.html" class="public">
+								<code>extend</code>
+							</a>
+							<span class="tableEntryAnnotation">(elements)</span>
+						</td>
+						<td>Get more data from the pipe. The parameter indicates the desired number
  of elements to add to the end of the window. If 0 is passed, then it is
  up to the implementation of the pipe to determine the optimal number of
  elements to add.
-</td></tr><tr><td><a href="../../iopipe/bufpipe/SimplePipe.release.html" class="[&quot;public&quot;]"><code>release</code></a></td><td>Release the given number of elements from the front of the window. After
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/bufpipe/SimplePipe.release.html" class="public">
+								<code>release</code>
+							</a>
+							<span class="tableEntryAnnotation">(elements)</span>
+						</td>
+						<td>Release the given number of elements from the front of the window. After
  calling this, make sure to update any tracking indexes for the window
  that you are maintaining.
-</td></tr><tr><td><a href="../../iopipe/bufpipe/SimplePipe.valve.html" class="[&quot;public&quot;]"><code>valve</code></a></td><td>Implement the required valve function. If the pipe you are wrapping
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/bufpipe/SimplePipe.valve.html" class="public">
+								<code>valve</code>
+							</a>
+							<span class="tableEntryAnnotation">()</span>
+						</td>
+						<td>Implement the required valve function. If the pipe you are wrapping
  has a valve, you must provide ref access to the valve.
-</td></tr><tr><td><a href="../../iopipe/bufpipe/SimplePipe.window.html" class="[&quot;public&quot;]"><code>window</code></a></td><td>Get the current window of elements for the pipe. This is the data that
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/bufpipe/SimplePipe.window.html" class="public">
+								<code>window</code>
+							</a>
+							<span class="tableEntryAnnotation">()</span>
+						</td>
+						<td>Get the current window of elements for the pipe. This is the data that
  can be used at this moment in time.
-</td></tr></table></section>
-<section><h2>Example</h2>
+</td>
+					</tr>
+				</table>
+			</section>
+			<section><h2>Example</h2>
 
 <pre class="code"><code class="lang-d"><span class="com">// any array is a valid iopipe source.
 </span><span class="kwd">auto </span><span class="pln">source </span><span class="pun">= </span><span class="str">"hello, world!"</span><span class="pun">;
@@ -74,11 +216,36 @@ $('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tr
 </span></code></pre>
 </section>
 
-<footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer
+			<footer>
+				<table class="license-info">
+					<tr>
+						<th>Authors</th>
+						<td>
+							<p>Steven Schveighoffer
 </p>
-</td></tr><tr><th>Copyright</th><td><p>Copyright Steven Schveighoffer 2011-.
+
+						</td>
+					</tr>
+					<tr>
+						<th>Copyright</th>
+						<td>
+							<p>Copyright Steven Schveighoffer 2011-.
 </p>
-</td></tr><tr><th>License</th><td><p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+
+						</td>
+					</tr>
+					<tr>
+						<th>License</th>
+						<td>
+							<p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
            at http://www.boost.org/LICENSE_1_0.txt)
 </p>
-</td></tr></table><p class="faint">Generated using the DDOX documentation generator</p></footer></div></body></html>
+
+						</td>
+					</tr>
+				</table>
+				<p class="faint">Generated using the DDOX documentation generator</p>
+			</footer>
+		</div>
+	</body>
+</html>

@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8"/>
-		<title>API documentation</title>
+		<title>Module iopipe</title>
 		<link rel="stylesheet" type="text/css" href="./styles/ddox.css"/>
 		<link rel="stylesheet" href="./prettify/prettify.css" type="text/css"/>
 		<script type="text/javascript" src="./scripts/jquery.js">/**/</script><script type="text/javascript" src="./scripts/ddox.js">/**/</script>
@@ -21,7 +21,7 @@ $('#symbolSearchPane').show();</script>
 			</div>
 			<ul class="tree-view">
 				<li class="tree-view ">
-					<div class="package ">
+					<div class="package selected">
 						<a href="./iopipe.html">iopipe</a>
 					</div>
 			<ul class="tree-view">
@@ -70,96 +70,45 @@ $('#symbolSearchPane').show();</script>
 			</ul>
 		</nav>
 		<div id="main-contents">
-			<h1>API documentation</h1>
-			<table>
-				<col class="caption"/>
-				<tr>
-					<th>Module</th><th>Description</th>
-				</tr>
-			<tr>
-				<td>
-					<a href="./iopipe/buffer.html">iopipe.buffer</a>
-				</td>
-				<td>
-					Buffer handling for iopipe.
+			<h1>Module iopipe</h1><p>iopipe is a modular buffering library based on range-like concepts.
+</p><section><p>The goal of iopipe is to provide small building blocks that can
+ then be combined together in "pipeline" chain to provide the exact
+ representation needed for buffered input and output.
+</p>
 
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<a href="./iopipe/bufpipe.html">iopipe.bufpipe</a>
-				</td>
-				<td>
-					Core functionality for iopipe. Defines the base types for manipulating and
-  processing data.
+<p> The simple principal that iopipe is based on is that i/o needs to be
+ buffered, and since we are already creating a buffer for performance, we can
+ provide access to the buffer to enable much richer parsing and formatting
+ mechanisms. An iopipe chain can provide a window of data that can be used
+ with any algorithms or functions that work with simple arrays or ranges.
+</p>
 
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<a href="./iopipe/refc.html">iopipe.refc</a>
-				</td>
-				<td>
-					Reference counting using the GC.
+<p> This module publicly imports all of iopipe.
+</p>
+</section>
 
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<a href="./iopipe/stream.html">iopipe.stream</a>
-				</td>
-				<td>
-					Simple streams for use with iopipe
-
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<a href="./iopipe/textpipe.html">iopipe.textpipe</a>
-				</td>
-				<td>
-					Text handling with iopipe.
-
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<a href="./iopipe/traits.html">iopipe.traits</a>
-				</td>
-				<td>
-					Base mechanisms used to determine information about iopipes.
-
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<a href="./iopipe/valve.html">iopipe.valve</a>
-				</td>
-				<td>
-					Valve mechanism to allow manipulation of wrapped iopipe pieces.
-
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<a href="./iopipe/zip.html">iopipe.zip</a>
-				</td>
-				<td>
-					Compression/decompression with iopipes.
-
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<a href="./iopipe.html">iopipe</a>
-				</td>
-				<td>
-					iopipe is a modular buffering library based on range-like concepts.
-
-				</td>
-			</tr>
-			</table>
+			<section></section>
 			<footer>
+				<table class="license-info">
+					<tr>
+						<th>Authors</th>
+						<td>
+							
+						</td>
+					</tr>
+					<tr>
+						<th>Copyright</th>
+						<td>
+							
+						</td>
+					</tr>
+					<tr>
+						<th>License</th>
+						<td>
+							
+						</td>
+					</tr>
+				</table>
 				<p class="faint">Generated using the DDOX documentation generator</p>
 			</footer>
 		</div>

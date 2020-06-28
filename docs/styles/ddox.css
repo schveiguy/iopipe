@@ -22,7 +22,7 @@ tr { border-bottom: 1px dashed #ddd; vertical-align: top; }
 col.caption { min-width: 150pt; }
 
 p.faint { color: #ccc; }
-span.decoration { color: #888; }
+span.tableEntryAnnotation { color: #888; }
 
 #main-nav, #main-contents, #symbolSearchResults, #symbolSearch {
 	-webkit-box-sizing: border-box;
