@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8"/>
-		<title>Variable nullDev</title>
+		<title>Struct NullDev</title>
 		<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
 		<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
 		<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script>
@@ -70,17 +70,35 @@ $('#symbolSearchPane').show();</script>
 			</ul>
 		</nav>
 		<div id="main-contents">
-			<h1>Variable nullDev</h1><p>Common instance of NullDev to use anywhere needed.
+			<h1>Struct NullDev</h1><p>A source that reads uninitialized data.
 </p>
 			<div class="prototype">
 				<code class="lang-d">
 					<div class="single-prototype">
-			<span class="kwd">immutable</span><span class="pun">(</span><a href="../../iopipe/stream/NullDev.html"><span class="typ">NullDev</span></a><span class="pun">)</span> <span class="pln">nullDev</span>
+			<span class="kwd">struct</span> <span class="typ">NullDev</span>
 			<span class="pun">;</span>
 					</div>
 				</code>
 			</div>
 			
+			<section><h2>Methods</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/stream/NullDev.read.html" class="public">
+								<code>read</code>
+							</a>
+							<span class="tableEntryAnnotation">(buf)</span>
+						</td>
+						<td>read the data. Always succeeds.
+</td>
+					</tr>
+				</table>
+			</section>
 			
 			<footer>
 				<table class="license-info">
