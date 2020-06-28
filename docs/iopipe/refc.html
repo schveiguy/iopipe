@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8"/>
-		<title>Module iopipe.zip</title>
+		<title>Module iopipe.refc</title>
 		<link rel="stylesheet" type="text/css" href="../styles/ddox.css"/>
 		<link rel="stylesheet" href="../prettify/prettify.css" type="text/css"/>
 		<script type="text/javascript" src="../scripts/jquery.js">/**/</script><script type="text/javascript" src="../scripts/ddox.js">/**/</script>
@@ -36,7 +36,7 @@ $('#symbolSearchPane').show();</script>
 					</div>
 				</li>
 				<li>
-					<div class="module ">
+					<div class="module selected">
 						<a href="../iopipe/refc.html">refc</a>
 					</div>
 				</li>
@@ -61,7 +61,7 @@ $('#symbolSearchPane').show();</script>
 					</div>
 				</li>
 				<li>
-					<div class="module selected">
+					<div class="module ">
 						<a href="../iopipe/zip.html">zip</a>
 					</div>
 				</li>
@@ -70,103 +70,42 @@ $('#symbolSearchPane').show();</script>
 			</ul>
 		</nav>
 		<div id="main-contents">
-			<h1>Module iopipe.zip</h1><p>Compression/decompression with iopipes.
-</p><section></section>
+			<h1>Module iopipe.refc</h1><p>Reference counting using the GC.
+</p><section><p>The RefCounted struct simply stores the item in a GC block, and also adds a
+ root to that block. Once all known references to the block are removed
+ (tracked by a reference count in the block), then the block is removed, and
+ the destructor run. Since it's a root, it can run the full destructor of the
+ data underneath, without worrying about GC data being collected underneath it.
+</p>
+
+<p> This depends on the block not being involved in a cycle, which should be fine
+ for iopipes.
+</p>
+
+<p> Note that atomics are used for the reference count because the GC can destroy
+ things in other threads.
+</p>
+</section>
 
 			<section></section>
-			<section>
-				<h2>Functions</h2>
-				<table>
-					<col class="caption"/>
-					<tr>
-						<th>Name</th><th>Description</th>
-					</tr>
-					<tr>
-						<td>
-							<code>
-								<a id="unzip" class="public" href="../iopipe/zip/unzip.html">unzip</a><span class="tableEntryAnnotation">(c, format)</span>
-							</code>
-						</td>
-						<td>Wrap an iopipe that contains compressed data into an iopipe containing the
- decompressed data. Data is not decompressed in place, so an extra buffer is
- created to hold it.
-</td>
-					</tr>
-					<tr>
-						<td>
-							<code>
-								<a id="unzipSrc" class="public" href="../iopipe/zip/unzipSrc.html">unzipSrc</a><span class="tableEntryAnnotation">(c, format)</span>
-							</code>
-						</td>
-						<td>Get a stream source that unzips an iopipe of ubytes. The source stream
- should be compressed in the appropriate format.
-</td>
-					</tr>
-					<tr>
-						<td>
-							<code>
-								<a id="zip" class="public" href="../iopipe/zip/zip.html">zip</a><span class="tableEntryAnnotation">(c, format)</span>
-							</code>
-						</td>
-						<td>Wrap an iopipe of ubytes into an iopipe containing the compressed data from
- that input. Data is not compressed in place, so an extra buffer is created
- to hold it.
-</td>
-					</tr>
-					<tr>
-						<td>
-							<code>
-								<a id="zipSrc" class="public" href="../iopipe/zip/zipSrc.html">zipSrc</a><span class="tableEntryAnnotation">(c, format)</span>
-							</code>
-						</td>
-						<td>Get a stream source that compresses an iopipe of ubytes with the given format.
-</td>
-					</tr>
-				</table>
-			</section>
-			<section>
-				<h2>Enums</h2>
-				<table>
-					<col class="caption"/>
-					<tr>
-						<th>Name</th><th>Description</th>
-					</tr>
-					<tr>
-						<td>
-							<code>
-								<a id="CompressionFormat" class="public" href="../iopipe/zip/CompressionFormat.html">CompressionFormat</a>
-							</code>
-						</td>
-						<td>Enum for specifying the desired or expected compression format.
-</td>
-					</tr>
-				</table>
-			</section>
 			<footer>
 				<table class="license-info">
 					<tr>
 						<th>Authors</th>
 						<td>
-							<p>Steven Schveighoffer
-</p>
-
+							
 						</td>
 					</tr>
 					<tr>
 						<th>Copyright</th>
 						<td>
-							<p>Copyright Steven Schveighoffer 2017.
-</p>
-
+							
 						</td>
 					</tr>
 					<tr>
 						<th>License</th>
 						<td>
-							<p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
-           at http://www.boost.org/LICENSE_1_0.txt)
-</p>
-
+							
 						</td>
 					</tr>
 				</table>

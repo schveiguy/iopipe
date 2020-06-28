@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8"/>
-		<title>Function process</title>
+		<title>Function writeBuf</title>
 		<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
 		<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
 		<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script>
@@ -70,30 +70,49 @@ $('#symbolSearchPane').show();</script>
 			</ul>
 		</nav>
 		<div id="main-contents">
-			<h1>Function process</h1><p>Process a given iopipe chain until it has reached EOF. This is accomplished
- by extending and releasing continuously until extend returns 0.
+			<h1>Function writeBuf</h1><p>Write data from a random access range or character array into the given
+ iopipe. If relOnWrite is set to true (ReleaseOnWrite.yes), then all data
+ before the provided offset, and any new data written to the pipe is always
+ released. This is mainly useful for output buffers where you do not wish to
+ allocate extra space in the buffer, and wish to flush the buffer when it's
+ full.
 </p>
 			<div class="prototype">
 				<code class="lang-d">
 					<div class="single-prototype">
-			<span class="pln">size_t</span> <span class="pln">process</span>(Chain)
+			<span class="pln">size_t</span> <span class="pln">writeBuf</span>(<span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">typecons<wbr/></span><span class="pun">.</span><span class="typ">Flag</span>!("releaseOnWrite") relOnWrite<span class="pln"> </span><span class="pun">= </span><span class="typ">ReleaseOnWrite<wbr/></span><span class="pun">.</span><span class="pln">yes</span>, Chain, Range)
 			<span class="pun">(</span>
 			<br/>
-			&nbsp;&nbsp;<span class="kwd">auto ref </span><span class="typ">Chain</span> <span class="pln">c</span>
+			&nbsp;&nbsp;<span class="kwd">ref </span><span class="typ">Chain</span> <span class="pln">c</span><span class="pun">,</span>
 			<br/>
-			<span class="pun">)</span><span class="pun">;</span>
+			&nbsp;&nbsp;<span class="typ">Range</span> <span class="pln">data</span><span class="pun">,</span>
+			<br/>
+			&nbsp;&nbsp;<span class="pln">size_t</span> <span class="pln">offset</span> <span class="pun">=</span> <span class="lit">0</span>
+			<br/>
+			<span class="pun">)</span>
+			<br/>
+			<span class="kwd">if</span> <span class="pun">(</span><span class="pln">isIopipe</span><span class="pun">!</span><span class="typ">Chain </span><span class="pun">&amp;&amp; </span><span class="kwd">__traits</span><span class="pun">(</span><span class="pln">compiles</span><span class="pun">, </span><span class="pln">c<wbr/></span><span class="pun">.</span><span class="pln">window</span><span class="pun">[</span><span class="lit">0</span><span class="pun">..</span><span class="lit">0</span><span class="pun">] = </span><span class="pln">data</span><span class="pun">[</span><span class="lit">0</span><span class="pun">..</span><span class="lit">0</span><span class="pun">])</span><span class="pun">);</span>
 					</div>
 				</code>
 			</div>
-			<section></section>
+			<section><p>If relOnWrite is false, then the pipe data is not released, and you should
+ consider the "written" part to be the offset + the return value.
+</p>
+</section>
 
 			<section><h2>Parameters</h2>
 <table><col class="caption"><tr><th>Name</th><th>Description</th></tr>
-<tr><td id="c">c</td><td> The iopipe to process</td></tr>
+<tr><td id="c">c</td><td> The iopipe chain to write to.</td></tr>
+<tr><td id="data">data</td><td> The range to write to the chain.</td></tr>
+<tr><td id="offset">offset</td><td> The starting point to write the data.</td></tr>
+<tr><td id="relOnWrite">relOnWrite</td><td> If true, data is released as it is written, otherwise,
+            it's not released.</td></tr>
 </table>
 </section>
 <section><h2>Returns</h2>
-<p>The number of elements processed.
+<p>The number of elements written. This should match the elements of
+ the range, but could potentially be less if there wasn't a way to extend
+ more space and more space was needed.
 </p>
 </section>
 

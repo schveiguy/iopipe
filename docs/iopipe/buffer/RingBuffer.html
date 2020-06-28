@@ -1,17 +1,90 @@
-<!DOCTYPE html><html><head>
-<meta charset="UTF-8"/>
-<title>Struct RingBuffer</title>
-<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
-<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
-<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script></head><body onload="setupDdox();"><nav id="main-nav"><noscript><p style="color: red">The search functionality needs JavaScript enabled</p></noscript><div id="symbolSearchPane" style="display: none"><form action="#" method="GET">
-<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
-$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module selected"><a href="../../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module "><a href="../../iopipe/stream.html">stream</a></div></li><li><div class="module "><a href="../../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Struct RingBuffer</h1><p>A RingBuffer uses the underlying memory management system to avoid any
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<title>Struct RingBuffer</title>
+		<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
+		<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
+		<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script>
+	</head>
+	<body onload="setupDdox();">
+		<nav id="main-nav">
+			<noscript>
+				<p style="color: red">The search functionality needs JavaScript enabled</p>
+			</noscript>
+			<div id="symbolSearchPane" style="display: none">
+				<form action="#" method="GET">
+					<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/>
+				</form>
+				<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+$('#symbolSearchPane').show();</script>
+			</div>
+			<ul class="tree-view">
+				<li class="tree-view ">
+					<div class="package ">
+						<a href="../../iopipe.html">iopipe</a>
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module selected">
+						<a href="../../iopipe/buffer.html">buffer</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/bufpipe.html">bufpipe</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/refc.html">refc</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/stream.html">stream</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/textpipe.html">textpipe</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/traits.html">traits</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/valve.html">valve</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../../iopipe/zip.html">zip</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+			</ul>
+		</nav>
+		<div id="main-contents">
+			<h1>Struct RingBuffer</h1><p>A RingBuffer uses the underlying memory management system to avoid any
  copying of data (unless expanding).
-</p><div class="prototype"><code class="lang-d"><div class="single-prototype"><span class="kwd">struct</span> <span class="typ">RingBuffer</span>(T, <span class="typ">ulong</span> floorSize<span class="pln"> </span><span class="pun">= </span><span class="lit">8192</span>)
-<br/>
-&nbsp;&nbsp;
-<br/>
-<span class="kwd">if</span> <span class="pun">(</span><span class="pln">isPowerOf2</span><span class="pun">(</span><span class="pln">T<wbr/></span><span class="pun">.</span><span class="pln">sizeof</span><span class="pun">)</span><span class="pun">);</span></div></code></div><section><p>It works by using the OS's mechanisms that map memory (mmap or VirtualAlloc)
+</p>
+			<div class="prototype">
+				<code class="lang-d">
+					<div class="single-prototype">
+			<span class="kwd">struct</span> <span class="typ">RingBuffer</span>(T, <span class="typ">ulong</span> floorSize<span class="pln"> </span><span class="pun">= </span><span class="lit">8192</span>)
+			<br/>
+			&nbsp;&nbsp;
+			<br/>
+			<span class="kwd">if</span> <span class="pun">(</span><span class="pln">isPowerOf2</span><span class="pun">(</span><span class="pln">T<wbr/></span><span class="pun">.</span><span class="pln">sizeof</span><span class="pun">)</span><span class="pun">);</span>
+					</div>
+				</code>
+			</div>
+			<section><p>It works by using the OS's mechanisms that map memory (mmap or VirtualAlloc)
  to map the same region to 2 consecutive addresses. This allows one to use a
  buffer simply as an array, even when the data wraps around the end of the
  buffer.
@@ -28,20 +101,85 @@ $('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tr
  automatically for you. The reason for this is that it must unmap the memory
  on destruction.
 </p>
+
+<p> Note that this buffer is not @safe, since it is possible on reallocation to
+ have dangling pointers (if anything keeps a reference to the original
+ memory).
+</p>
 </section>
-<section><h2>Methods</h2><table>
-<col class="caption"/>
-<tr><th>Name</th><th>Description</th></tr><tr><td><a href="../../iopipe/buffer/RingBuffer.avail.html" class="[&quot;public&quot;]"><code>avail</code></a></td><td></td></tr><tr><td><a href="../../iopipe/buffer/RingBuffer.capacity.html" class="[&quot;public&quot;]"><code>capacity</code></a></td><td></td></tr><tr><td><a href="../../iopipe/buffer/RingBuffer.extend.html" class="[&quot;public&quot;]"><code>extend</code></a></td><td>Add more data to the window of currently valid data. To avoid expensive
+
+			<section><h2>Methods</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/buffer/RingBuffer.avail.html" class="public">
+								<code>avail</code>
+							</a>
+							<span class="tableEntryAnnotation">()</span>
+						</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/buffer/RingBuffer.capacity.html" class="public">
+								<code>capacity</code>
+							</a>
+							<span class="tableEntryAnnotation">()</span>
+						</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/buffer/RingBuffer.extend.html" class="public">
+								<code>extend</code>
+							</a>
+							<span class="tableEntryAnnotation">(request)</span>
+						</td>
+						<td>Add more data to the window of currently valid data. To avoid expensive
  reallocation, use avail to tune this call.
-</td></tr><tr><td><a href="../../iopipe/buffer/RingBuffer.releaseBack.html" class="[&quot;public&quot;]"><code>releaseBack</code></a></td><td>Give bytes back to the buffer from the back of the buffer.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/buffer/RingBuffer.releaseBack.html" class="public">
+								<code>releaseBack</code>
+							</a>
+							<span class="tableEntryAnnotation">(elements)</span>
+						</td>
+						<td>Give bytes back to the buffer from the back of the buffer.
  These bytes can be removed in this operation or further operations and
  should no longer be used.
-</td></tr><tr><td><a href="../../iopipe/buffer/RingBuffer.releaseFront.html" class="[&quot;public&quot;]"><code>releaseFront</code></a></td><td>Give bytes back to the buffer from the front of the buffer.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/buffer/RingBuffer.releaseFront.html" class="public">
+								<code>releaseFront</code>
+							</a>
+							<span class="tableEntryAnnotation">(elements)</span>
+						</td>
+						<td>Give bytes back to the buffer from the front of the buffer.
  These bytes can be removed in this operation or further operations and
  should no longer be used.
-</td></tr><tr><td><a href="../../iopipe/buffer/RingBuffer.window.html" class="[&quot;public&quot;]"><code>window</code></a></td><td>The window of currently valid data.
-</td></tr></table></section>
-<section><h2>Parameters</h2>
+</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="../../iopipe/buffer/RingBuffer.window.html" class="public">
+								<code>window</code>
+							</a>
+							<span class="tableEntryAnnotation">()</span>
+						</td>
+						<td>The window of currently valid data.
+</td>
+					</tr>
+				</table>
+			</section>
+			<section><h2>Parameters</h2>
 <table><col class="caption"><tr><th>Name</th><th>Description</th></tr>
 <tr><td id="T">T</td><td> The type of the elements the buffer will use. Must be sized as a power of 2.</td></tr>
 <tr><td id="floorSize">floorSize</td><td> The size that can be freely allocated before growth is
@@ -50,11 +188,36 @@ $('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tr
 </table>
 </section>
 
-<footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer, Dmitry Olshansky
+			<footer>
+				<table class="license-info">
+					<tr>
+						<th>Authors</th>
+						<td>
+							<p>Steven Schveighoffer, Dmitry Olshansky
 </p>
-</td></tr><tr><th>Copyright</th><td><p>Copyright Steven Schveighoffer 2011-.
+
+						</td>
+					</tr>
+					<tr>
+						<th>Copyright</th>
+						<td>
+							<p>Copyright Steven Schveighoffer 2011-.
 </p>
-</td></tr><tr><th>License</th><td><p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+
+						</td>
+					</tr>
+					<tr>
+						<th>License</th>
+						<td>
+							<p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
            at http://www.boost.org/LICENSE_1_0.txt)
 </p>
-</td></tr></table><p class="faint">Generated using the DDOX documentation generator</p></footer></div></body></html>
+
+						</td>
+					</tr>
+				</table>
+				<p class="faint">Generated using the DDOX documentation generator</p>
+			</footer>
+		</div>
+	</body>
+</html>

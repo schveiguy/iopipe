@@ -1,64 +1,299 @@
-<!DOCTYPE html><html><head>
-<meta charset="UTF-8"/>
-<title>Module iopipe.textpipe</title>
-<link rel="stylesheet" type="text/css" href="../styles/ddox.css"/>
-<link rel="stylesheet" href="../prettify/prettify.css" type="text/css"/>
-<script type="text/javascript" src="../scripts/jquery.js">/**/</script><script type="text/javascript" src="../scripts/ddox.js">/**/</script></head><body onload="setupDdox();"><nav id="main-nav"><noscript><p style="color: red">The search functionality needs JavaScript enabled</p></noscript><div id="symbolSearchPane" style="display: none"><form action="#" method="GET">
-<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/></form><ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../";
-$('#symbolSearchPane').show();</script></div><ul class="tree-view"><li class="tree-view "><div class="package ">iopipe</div><ul class="tree-view"><li><div class="module "><a href="../iopipe/buffer.html">buffer</a></div></li><li><div class="module "><a href="../iopipe/bufpipe.html">bufpipe</a></div></li><li><div class="module "><a href="../iopipe/stream.html">stream</a></div></li><li><div class="module selected"><a href="../iopipe/textpipe.html">textpipe</a></div></li><li><div class="module "><a href="../iopipe/traits.html">traits</a></div></li><li><div class="module "><a href="../iopipe/valve.html">valve</a></div></li><li><div class="module "><a href="../iopipe/zip.html">zip</a></div></li></ul></li></ul></nav><div id="main-contents"><h1>Module iopipe.textpipe</h1><p>Text handling with iopipe.
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<title>Module iopipe.textpipe</title>
+		<link rel="stylesheet" type="text/css" href="../styles/ddox.css"/>
+		<link rel="stylesheet" href="../prettify/prettify.css" type="text/css"/>
+		<script type="text/javascript" src="../scripts/jquery.js">/**/</script><script type="text/javascript" src="../scripts/ddox.js">/**/</script>
+	</head>
+	<body onload="setupDdox();">
+		<nav id="main-nav">
+			<noscript>
+				<p style="color: red">The search functionality needs JavaScript enabled</p>
+			</noscript>
+			<div id="symbolSearchPane" style="display: none">
+				<form action="#" method="GET">
+					<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(40);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();"/>
+				</form>
+				<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../";
+$('#symbolSearchPane').show();</script>
+			</div>
+			<ul class="tree-view">
+				<li class="tree-view ">
+					<div class="package ">
+						<a href="../iopipe.html">iopipe</a>
+					</div>
+			<ul class="tree-view">
+				<li>
+					<div class="module ">
+						<a href="../iopipe/buffer.html">buffer</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../iopipe/bufpipe.html">bufpipe</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../iopipe/refc.html">refc</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../iopipe/stream.html">stream</a>
+					</div>
+				</li>
+				<li>
+					<div class="module selected">
+						<a href="../iopipe/textpipe.html">textpipe</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../iopipe/traits.html">traits</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../iopipe/valve.html">valve</a>
+					</div>
+				</li>
+				<li>
+					<div class="module ">
+						<a href="../iopipe/zip.html">zip</a>
+					</div>
+				</li>
+			</ul>
+				</li>
+			</ul>
+		</nav>
+		<div id="main-contents">
+			<h1>Module iopipe.textpipe</h1><p>Text handling with iopipe.
 </p>
-<section></section><section><h2>Functions</h2><table>
-<col class="caption"/>
-<tr><th>Name</th><th>Description</th></tr><tr><td><code><a id="assumeText" class="[&quot;public&quot;]" href="../iopipe/textpipe/assumeText.html">assumeText</a><span class="decoration">(c)</span></code></td><td>Given an ioPipe whose window is a buffer that is a dynamic array of data of
+			<section></section>
+			<section>
+				<h2>Functions</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="assumeText" class="public" href="../iopipe/textpipe/assumeText.html">assumeText</a><span class="tableEntryAnnotation">(c)</span>
+							</code>
+						</td>
+						<td>Given an ioPipe whose window is a buffer that is a dynamic array of data of
  integral type, performs the proper transformations in order to get a buffer
  of valid char, wchar, or dchar elements, depending on the provided encoding.
  This function is useful for when you have data from a raw source (such as a
  file or stream) that you have determined or know is really a stream of UTF
  data.
-</td></tr><tr><td><code><a id="byDelimRange" class="[&quot;public&quot;]" href="../iopipe/textpipe/byDelimRange.html">byDelimRange</a><span class="decoration">(c, delim)</span></code></td><td>Given a text iopipe, returns a range based on splitting the text by a given
+</td>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="byDelimRange" class="public" href="../iopipe/textpipe/byDelimRange.html">byDelimRange</a><span class="tableEntryAnnotation">(c, delim)</span>
+							</code>
+						</td>
+						<td>Given a text iopipe, returns a range based on splitting the text by a given
  code point. This has the advantage over <code class="lang-d"><span class="pln">delimitedText<wbr/></span><span class="pun">.</span><span class="pln">asRange</span></code> in that the
  delimiter can be hidden.
-</td></tr><tr><td><code><a id="byLine" class="[&quot;public&quot;]" href="../iopipe/textpipe/byLine.html">byLine</a><span class="decoration">(c)</span></code></td><td>A convenience wrapper for delimitedText that uses the newline character '\n'
+</td>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="byLine" class="public" href="../iopipe/textpipe/byLine.html">byLine</a><span class="tableEntryAnnotation">(c)</span>
+							</code>
+						</td>
+						<td>A convenience wrapper for delimitedText that uses the newline character '\n'
  to delimit the segments. Equivalent to <code class="lang-d"><a href="../iopipe/textpipe/delimitedText.html"><span class="pln">delimitedText</span></a><span class="pun">(<a href="../iopipe/textpipe/byLine.html#c"></span><span class="pln">c</span></a><span class="pun">, </span><span class="str">'\n'</span><span class="pun">);</span></code>
-</td></tr><tr><td><code><a id="byLineRange" class="[&quot;public&quot;]" href="../iopipe/textpipe/byLineRange.html">byLineRange</a><span class="decoration">(c)</span></code></td><td>Convenience wrapper for byDelimRange that uses the newline character '\n' as
+</td>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="byLineRange" class="public" href="../iopipe/textpipe/byLineRange.html">byLineRange</a><span class="tableEntryAnnotation">(c)</span>
+							</code>
+						</td>
+						<td>Convenience wrapper for byDelimRange that uses the newline character '\n' as
  the delimiter. Equivalent to `byDelimRange!(KeepDelimiter)(c, '\n');
-</td></tr><tr><td><code><a id="convertText" class="[&quot;public&quot;]" href="../iopipe/textpipe/convertText.html">convertText</a><span class="decoration">(chain)</span></code></td><td>Convert iopipe of one text type into an iopipe for another type. Performs
+</td>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="convertText" class="public" href="../iopipe/textpipe/convertText.html">convertText</a><span class="tableEntryAnnotation">(chain)</span>
+							</code>
+						</td>
+						<td>Convert iopipe of one text type into an iopipe for another type. Performs
  conversions at the code-point level. If specified, the resulting iopipe will
  ensure there is a BOM at the beginning of the iopipe. This is useful if
  writing to storage.
-</td></tr><tr><td><code><a id="delimitedText" class="[&quot;public&quot;]" href="../iopipe/textpipe/delimitedText.html">delimitedText</a><span class="decoration">(c, delim)</span></code></td><td>Process a given text iopipe by a given code point delimeter. The only
+</td>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="delimitedText" class="public" href="../iopipe/textpipe/delimitedText.html">delimitedText</a><span class="tableEntryAnnotation">(c, delim)</span>
+							</code>
+						</td>
+						<td>Process a given text iopipe by a given code point delimeter. The only
  behavior that changes from the input pipe is that extensions to the window
  deliever exactly one more delimited segment of text.
-</td></tr><tr><td><code><a id="detectBOM" class="[&quot;public&quot;]" href="../iopipe/textpipe/detectBOM.html">detectBOM</a><span class="decoration">(r)</span></code></td><td>Using the given random access range of bytes, determine the stream width.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="detectBOM" class="public" href="../iopipe/textpipe/detectBOM.html">detectBOM</a><span class="tableEntryAnnotation">(r)</span>
+							</code>
+						</td>
+						<td>Using the given random access range of bytes, determine the stream width.
  This does not advance the range past the BOM.
-</td></tr><tr><td><code><a id="encodeText" class="[&quot;public&quot;]" href="../iopipe/textpipe/encodeText.html">encodeText</a><span class="decoration">(c)</span></code></td><td>Encode a given text iopipe into the desired encoding type. The resulting
+</td>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="encodeText" class="public" href="../iopipe/textpipe/encodeText.html">encodeText</a><span class="tableEntryAnnotation">(c)</span>
+							</code>
+						</td>
+						<td>Encode a given text iopipe into the desired encoding type. The resulting
  iopipe's element type is ubyte, with the bytes ready to be written to a
  storage device.
-</td></tr><tr><td><code><a id="ensureDecodeable" class="[&quot;public&quot;]" href="../iopipe/textpipe/ensureDecodeable.html">ensureDecodeable</a><span class="decoration">(c)</span></code></td><td>Wraps a text-based iopipe to make sure all code units are decodeable.
-</td></tr><tr><td><code><a id="runEncoded" class="[&quot;public&quot;]" href="../iopipe/textpipe/runEncoded.html">runEncoded</a><span class="decoration">(c, args)</span></code></td><td>Given a template function, and an input chain of encoded text data, this
+</td>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="ensureDecodeable" class="public" href="../iopipe/textpipe/ensureDecodeable.html">ensureDecodeable</a><span class="tableEntryAnnotation">(c)</span>
+							</code>
+						</td>
+						<td>Wraps a text-based iopipe to make sure all code units are decodeable.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="runEncoded" class="public" href="../iopipe/textpipe/runEncoded.html">runEncoded</a><span class="tableEntryAnnotation">(c, args)</span>
+							</code>
+						</td>
+						<td>Given a template function, and an input chain of encoded text data, this
  function will detect the encoding of the input chain, and convert that
  runtime value into a compile-time parameter to the given function. Useful
  for writing code that needs to handle all the forms of text encoding.
-</td></tr><tr><td><code><a id="runWithEncoding" class="[&quot;public&quot;]" href="../iopipe/textpipe/runWithEncoding.html">runWithEncoding</a><span class="decoration">(c, args)</span></code></td><td>Given a template function, and an input chain of encoded text data, this
+</td>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="runWithEncoding" class="public" href="../iopipe/textpipe/runWithEncoding.html">runWithEncoding</a><span class="tableEntryAnnotation">(c, args)</span>
+							</code>
+						</td>
+						<td>Given a template function, and an input chain of encoded text data, this
  function will detect the encoding of the input chain, and convert that
  runtime value into a compile-time parameter to the given function. Useful
  for writing code that needs to handle all the forms of text encoding.
-</td></tr><tr><td><code><a id="textConverter" class="[&quot;public&quot;]" href="../iopipe/textpipe/textConverter.html">textConverter</a><span class="decoration">(c)</span></code></td><td>A converter to allow conversion into any other type of text.
-</td></tr><tr><td><code><a id="textOutput" class="[&quot;public&quot;]" href="../iopipe/textpipe/textOutput.html">textOutput</a><span class="decoration">(c)</span></code></td><td>Take a text-based iopipe and turn it into an output range of <code class="lang-d"><span class="typ">dchar</span></code>. Note
+</td>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="textConverter" class="public" href="../iopipe/textpipe/textConverter.html">textConverter</a><span class="tableEntryAnnotation">(c)</span>
+							</code>
+						</td>
+						<td>A converter to allow conversion into any other type of text.
+</td>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="textOutput" class="public" href="../iopipe/textpipe/textOutput.html">textOutput</a><span class="tableEntryAnnotation">(c)</span>
+							</code>
+						</td>
+						<td>Take a text-based iopipe and turn it into an output range of <code class="lang-d"><span class="typ">dchar</span></code>. Note
  that the iopipe must be an output iopipe, not an input one. In other words,
  a <code class="lang-d"><span class="pln">textOutput</span></code> result doesn't output its input, it uses its input as a place
  to deposit data.
-</td></tr></table></section><section><h2>Enums</h2><table>
-<col class="caption"/>
-<tr><th>Name</th><th>Description</th></tr><tr><td><code><a id="UTFType" class="[&quot;public&quot;]" href="../iopipe/textpipe/UTFType.html">UTFType</a></code></td><td>Used to specify stream type
-</td></tr></table></section><section><h2>Aliases</h2><table>
-<col class="caption"/>
-<tr><th>Name</th><th>Type</th><th>Description</th></tr><tr><td><a id="CodeUnit" class="[&quot;public&quot;]" href="../iopipe/textpipe/CodeUnit.html"><code>CodeUnit</code></a></td><td><code class="prettyprint lang-d"><span class="typ">char</span></code></td><td>Aliased to code unit type of a specified stream type.
-</td></tr></table></section><footer><table class="license-info"><tr><th>Authors</th><td><p>Steven Schveighoffer
+</td>
+					</tr>
+				</table>
+			</section>
+			<section>
+				<h2>Enums</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<code>
+								<a id="UTFType" class="public" href="../iopipe/textpipe/UTFType.html">UTFType</a>
+							</code>
+						</td>
+						<td>Used to specify stream type
+</td>
+					</tr>
+				</table>
+			</section>
+			<section>
+				<h2>Aliases</h2>
+				<table>
+					<col class="caption"/>
+					<tr>
+						<th>Name</th><th>Type</th><th>Description</th>
+					</tr>
+					<tr>
+						<td>
+							<a id="CodeUnit" class="public" href="../iopipe/textpipe/CodeUnit.html">
+								<code>CodeUnit</code>
+							</a>
+						</td>
+						<td>
+							<code class="prettyprint lang-d"><span class="typ">char</span></code>
+						</td>
+						<td>Aliased to code unit type of a specified stream type.
+</td>
+					</tr>
+				</table>
+			</section>
+			<footer>
+				<table class="license-info">
+					<tr>
+						<th>Authors</th>
+						<td>
+							<p>Steven Schveighoffer
 </p>
-</td></tr><tr><th>Copyright</th><td><p>Copyright Steven Schveighoffer 2011-.
+
+						</td>
+					</tr>
+					<tr>
+						<th>Copyright</th>
+						<td>
+							<p>Copyright Steven Schveighoffer 2011-.
 </p>
-</td></tr><tr><th>License</th><td><p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
+
+						</td>
+					</tr>
+					<tr>
+						<th>License</th>
+						<td>
+							<p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
            at http://www.boost.org/LICENSE_1_0.txt)
 </p>
-</td></tr></table><p class="faint">Generated using the DDOX documentation generator</p></footer></div></body></html>
+
+						</td>
+					</tr>
+				</table>
+				<p class="faint">Generated using the DDOX documentation generator</p>
+			</footer>
+		</div>
+	</body>
+</html>

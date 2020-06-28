@@ -11,6 +11,22 @@ import iopipe.traits;
 import iopipe.buffer;
 import etc.c.zlib;
 
+// separate these out, to avoid having to deal with unnecessary out of bounds
+// checks
+// note, zlib uses uint, so we need to deal with issues with larger
+// than uint.max window length.
+private @trusted void setInput(ref z_stream str, const(ubyte)[] win) @nogc nothrow pure
+{
+    str.avail_in = win.length > uint.max ? uint.max : cast(uint)win.length;
+    str.next_in = win.ptr;
+}
+
+private @trusted void setOutput(ref z_stream str, ubyte[] win) @nogc nothrow pure
+{
+    str.avail_out = win.length > uint.max ? uint.max : cast(uint)win.length;
+    str.next_out = win.ptr;
+}
+
 /**
  * Enum for specifying the desired or expected compression format.
  */
@@ -26,24 +42,23 @@ enum CompressionFormat
 
 private struct ZipSrc(Chain)
 {
-    import std.typecons: RefCounted, RefCountedAutoInitialize;
+    import iopipe.refc;
     Chain chain;
     // zstream cannot be moved once initialized, as it has internal pointers to itself.
-    RefCounted!(z_stream, RefCountedAutoInitialize.no) zstream;
+    RefCounted!(z_stream) zstream;
     int flushMode;
 
     // convenience, because this is so long and painful!
-    private @property z_stream *zstrptr()
+    private @property @system z_stream *zstrptr()
     {
-        return &zstream.refCountedPayload();
+        return &zstream._get();
     }
 
     this(Chain c, CompressionFormat format)
     {
         chain = c;
-        zstream.refCountedStore.ensureInitialized();
-        zstream.next_in = chain.window.ptr;
-        zstream.avail_in = cast(uint)chain.window.length;
+        zstream = z_stream().refCounted;
+        zstream.setInput(chain.window);
         flushMode = Z_NO_FLUSH;
         int windowbits = 15;
         switch(format) with(CompressionFormat)
@@ -57,14 +72,14 @@ private struct ZipSrc(Chain)
             break;
         }
 
-        if(deflateInit2(zstrptr, Z_DEFAULT_COMPRESSION, Z_DEFLATED, windowbits,
-                        8, Z_DEFAULT_STRATEGY) != Z_OK)
+        if((() @trusted => deflateInit2(zstrptr, Z_DEFAULT_COMPRESSION,
+                        Z_DEFLATED, windowbits, 8, Z_DEFAULT_STRATEGY))() != Z_OK)
         {
             throw new Exception("Error initializing zip deflation");
         }
 
         // just in case inflateinit consumed some bytes.
-        chain.release(zstream.next_in - chain.window.ptr);
+        chain.release(chain.window.length - zstream.avail_in);
     }
 
     size_t read(ubyte[] target)
@@ -77,8 +92,7 @@ private struct ZipSrc(Chain)
         // issues.
         if(target.length > uint.max)
             target = target[0 .. uint.max];
-        zstream.next_out = target.ptr;
-        zstream.avail_out = cast(uint)target.length;
+        zstream.setOutput(target);
 
         while(zstream.avail_out == target.length) // while we haven't written anything yet
         {
@@ -90,10 +104,9 @@ private struct ZipSrc(Chain)
                     flushMode = Z_FINISH;
                 }
             }
-            zstream.next_in = chain.window.ptr;
-            zstream.avail_in = cast(uint)chain.window.length;
-            auto deflate_result = deflate(zstrptr, flushMode);
-            chain.release(zstream.next_in - chain.window.ptr);
+            zstream.setInput(chain.window);
+            auto deflate_result = (() @trusted => deflate(zstrptr, flushMode))();
+            chain.release(chain.window.length - zstream.avail_in);
 
             if(deflate_result == Z_OK)
             {
@@ -117,7 +130,7 @@ private struct ZipSrc(Chain)
             {
                 // finished with the stream
                 auto result = target.length - zstream.avail_out;
-                deflateEnd(zstrptr);
+                () @trusted {deflateEnd(zstrptr);}();
                 zstream = z_stream.init;
                 return result;
             }
@@ -135,16 +148,16 @@ private struct ZipSrc(Chain)
 
 private struct UnzipSrc(Chain)
 {
-    import std.typecons: RefCounted, RefCountedAutoInitialize;
+    import iopipe.refc;
     Chain chain;
     // zstream cannot be moved once initialized, as it has internal pointers to itself.
-    RefCounted!(z_stream, RefCountedAutoInitialize.no) zstream;
+    RefCounted!(z_stream) zstream;
     private CompressionFormat openedFormat;
 
     // convenience, because this is so long and painful!
-    private @property z_stream *zstrptr()
+    private @property @system z_stream *zstrptr()
     {
-        return &zstream.refCountedPayload();
+        return &zstream._get();
     }
 
     private void ensureMoreData(bool setupInput = false)
@@ -156,13 +169,7 @@ private struct UnzipSrc(Chain)
         }
         if(setupInput)
         {
-            zstream.next_in = chain.window.ptr;
-            // note, zlib uses uint, so we need to deal with issues with larger
-            // than uint.max window length.
-            if(chain.window.length > uint.max)
-                zstream.avail_in = uint.max;
-            else
-                zstream.avail_in = cast(uint)chain.window.length;
+            zstream.setInput(chain.window);
         }
     }
 
@@ -182,13 +189,13 @@ private struct UnzipSrc(Chain)
             // use 15
             break;
         }
-        if(inflateInit2(zstrptr, windowbits) != Z_OK)
+        if((() @trusted => inflateInit2(zstrptr, windowbits))() != Z_OK)
         {
             throw new Exception("Error initializing zip inflation");
         }
 
         // just in case inflateinit consumed some bytes.
-        chain.release(zstream.next_in - chain.window.ptr);
+        chain.release(chain.window.length - zstream.avail_in);
         ensureMoreData();
     }
 
@@ -196,7 +203,7 @@ private struct UnzipSrc(Chain)
     {
         chain = c;
         openedFormat = format;
-        zstream.refCountedStore.ensureInitialized;
+        zstream = z_stream().refCounted;
         ensureMoreData(true);
         initializeStream();
     }
@@ -223,21 +230,20 @@ private struct UnzipSrc(Chain)
         // issues.
         if(target.length > uint.max)
             target = target[0 .. uint.max];
-        zstream.next_out = target.ptr;
-        zstream.avail_out = cast(uint)target.length;
+        zstream.setOutput(target);
 
         // now, unzip the data into the buffer. Stop when we have done at most
         // 2 extends on the input data.
         foreach(i; 0 .. 2)
         {
             ensureMoreData();
-            auto inflate_result = inflate(zstrptr, Z_NO_FLUSH);
-            chain.release(zstream.next_in - chain.window.ptr);
+            auto inflate_result = (() @trusted => inflate(zstrptr, Z_NO_FLUSH))();
+            chain.release(chain.window.length - zstream.avail_in);
             if(inflate_result == Z_STREAM_END)
             {
                 // all done?
                 size_t result = target.length - zstream.avail_out;
-                inflateEnd(zstrptr);
+                () @trusted {inflateEnd(zstrptr);}();
                 zstream = z_stream.init;
                 if(result == 0)
                 {
@@ -306,7 +312,7 @@ auto unzipSrc(Chain)(Chain c, CompressionFormat format = CompressionFormat.deter
  *    An input stream whose `read` method compresses the input iopipe data into
  *    the given buffer.
  */
-auto zipSrc(Chain)(Chain c, CompressionFormat format = CompressionFormat.gzip)
+auto zipSrc(Chain)(Chain c, CompressionFormat format = CompressionFormat.gzip) @safe
     if(isIopipe!(Chain) && is(WindowType!Chain : const(ubyte)[]))
 {
     if(c.window.length == 0)
@@ -357,7 +363,7 @@ auto zip(Allocator = GCNoPointerAllocator, Chain)(Chain c, CompressionFormat for
 
 // I won't pretend to know what the zip format should look like, so just verify that
 // we can do some kind of compression and return to the original.
-unittest
+@safe unittest
 {
     import std.range: cycle, take;
     import std.array: array;
@@ -372,6 +378,10 @@ unittest
     static struct ByteWriter
     {
         ubyte[] *result;
+        this(ref ubyte[] target) @trusted
+        {
+            result = &target;
+        }
         size_t write(ubyte[] data)
         {
             (*result) ~= data;
@@ -380,14 +390,14 @@ unittest
     }
 
     ubyte[] zipped;
-    realData.zip.outputPipe(ByteWriter(&zipped)).process();
+    realData.zip.outputPipe(ByteWriter(zipped)).process();
 
     // zipped contains the zipped data, make sure it's less (it should be,
     // plenty of opportunity to compress!
     assert(zipped.length < realData.length);
 
     ubyte[] unzipped;
-    zipped.unzip.outputPipe(ByteWriter(&unzipped)).process();
+    zipped.unzip.outputPipe(ByteWriter(unzipped)).process();
 
     assert(unzipped == realData);
 }
