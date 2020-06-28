@@ -50,9 +50,8 @@ struct RefCounted(T)
 
     ref T _get()
     {
-        if(_impl)
-            return _impl.item;
-        throw new Error("Invalid refcounted access");
+        assert(_impl, "Invalid refcounted access");
+        return _impl.item;
     }
 
     this(this)
@@ -84,6 +83,12 @@ struct RefCounted(T)
     {
         import std.algorithm : swap;
         swap(_impl, other._impl);
+    }
+
+    void opAssign(T other)
+    {
+        import std.algorithm : move;
+        move(other, _impl.item);
     }
 
     alias _get this;
