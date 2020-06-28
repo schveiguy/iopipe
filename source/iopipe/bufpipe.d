@@ -422,7 +422,7 @@ private struct ArrayCastPipe(Chain, T) if(isIopipe!(Chain) && isDynamicArray!(Wi
  *
  * Returns: New pipe chain with new array type.
  */
-auto arrayCastPipe(T, Chain)(Chain c) @safe if(isIopipe!(Chain) && isDynamicArray!(WindowType!(Chain)))
+auto arrayCastPipe(T, Chain)(Chain c) if(isIopipe!(Chain) && isDynamicArray!(WindowType!(Chain)))
 {
     static if(is(typeof(c.window[0]) == T))
         return c;
