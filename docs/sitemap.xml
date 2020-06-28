@@ -46,6 +46,12 @@
 <url><loc>http://127.0.0.1/iopipe/bufpipe/SimplePipe.window.html</loc></url>
 <url><loc>http://127.0.0.1/iopipe/bufpipe/writeBuf.html</loc></url>
 <url><loc>http://127.0.0.1/iopipe/refc.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/refc/RefCounted.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/refc/RefCounted._get.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/refc/RefCounted.opAssign.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/refc/RefCounted.opAssign.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/refc/RefCounted.this.html</loc></url>
+<url><loc>http://127.0.0.1/iopipe/refc/refCounted.html</loc></url>
 <url><loc>http://127.0.0.1/iopipe/stream.html</loc></url>
 <url><loc>http://127.0.0.1/iopipe/stream/IODev.html</loc></url>
 <url><loc>http://127.0.0.1/iopipe/stream/IODev.html</loc></url>

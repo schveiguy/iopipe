@@ -15,8 +15,21 @@
  */
 module iopipe.refc;
 
+/**
+ * A struct to ensure only one copy of the provided item exists.
+ *
+ * This differs from Phobos' std.typecons.RefCounted by using the GC to store
+ * the memory, instead of C's heap. The benefit here is that this version of
+ * RefCounted can be @safe.
+ *
+ * The block containing the item is pinned in the GC until all references are
+ * gone, which means the destructor will be run synchronously when the last
+ * reference is removed. Therefore, it is safe to store a RefCounted struct
+ * inside a GC allocated type.
+ */
 struct RefCounted(T)
 {
+    /// Constructor. the underlying T is constructed using the parameters.
     this(Args...)(auto ref Args args)
     {
         import core.memory : GC;
@@ -48,7 +61,11 @@ struct RefCounted(T)
         shared int _count = 1;
     }
 
-    ref T _get()
+    /** Get a reference to the item. Note that if you store a reference to this
+    * item, it is possible the item will in the future be destroyed, but the
+    * memory will still be present (until the GC cleans it up).
+    */
+    ref T _get() return
     {
         assert(_impl, "Invalid refcounted access");
         return _impl.item;
@@ -79,31 +96,39 @@ struct RefCounted(T)
         }
     }
 
+    /// Assignment to another ref counted item.
     void opAssign(RefCounted other)
     {
         import std.algorithm : swap;
         swap(_impl, other._impl);
     }
 
+    /// Assignment to another T.
     void opAssign(T other)
     {
         import std.algorithm : move;
         move(other, _impl.item);
     }
 
+    /// Alias the item to this struct.
     alias _get this;
 
 private:
     private Impl * _impl;
 }
 
+/// Return a ref counted version of the given item.
 RefCounted!T refCounted(T)(auto ref T item)
 {
     return RefCounted!T(item);
 }
 
+///
 @safe unittest
 {
+    // note that destructor is called from the parameter to refCounted, so we
+    // must trigger only counting destruction of non-init instances of the
+    // struct.
     size_t dtorcalled = 0;
     struct S
     {

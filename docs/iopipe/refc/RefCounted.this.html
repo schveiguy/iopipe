@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8"/>
-		<title>Function push</title>
+		<title>Function RefCounted.this</title>
 		<link rel="stylesheet" type="text/css" href="../../styles/ddox.css"/>
 		<link rel="stylesheet" href="../../prettify/prettify.css" type="text/css"/>
 		<script type="text/javascript" src="../../scripts/jquery.js">/**/</script><script type="text/javascript" src="../../scripts/ddox.js">/**/</script>
@@ -36,7 +36,7 @@ $('#symbolSearchPane').show();</script>
 					</div>
 				</li>
 				<li>
-					<div class="module ">
+					<div class="module selected">
 						<a href="../../iopipe/refc.html">refc</a>
 					</div>
 				</li>
@@ -56,7 +56,7 @@ $('#symbolSearchPane').show();</script>
 					</div>
 				</li>
 				<li>
-					<div class="module selected">
+					<div class="module ">
 						<a href="../../iopipe/valve.html">valve</a>
 					</div>
 				</li>
@@ -70,72 +70,40 @@ $('#symbolSearchPane').show();</script>
 			</ul>
 		</nav>
 		<div id="main-contents">
-			<h1>Function push</h1><p>Convenience mechanism to wrap a specified output pipeline with a holding
- loop. It avoids having to explicitly specify the loop begin and end.
+			<h1>Function RefCounted.this</h1><p>Constructor. the underlying T is constructed using the parameters.
 </p>
 			<div class="prototype">
 				<code class="lang-d">
 					<div class="single-prototype">
-			<span class="kwd">auto</span> <span class="pln">push</span>(alias pipeline, <span class="typ">bool</span> autoFlush<span class="pln"> </span><span class="pun">= </span><span class="kwd">true</span>, Chain)
+			<span class="pln">this</span>(Args...)
 			<span class="pun">(</span>
 			<br/>
-			&nbsp;&nbsp;<span class="typ">Chain</span> <span class="pln">c</span>
+			&nbsp;&nbsp;<span class="kwd">auto ref </span><span class="typ">Args</span> <span class="pln">args</span>
 			<br/>
-			<span class="pun">)</span>
-			<br/>
-			<span class="kwd">if</span> <span class="pun">(</span><span class="pln">isIopipe</span><span class="pun">!(</span><span class="kwd">typeof</span><span class="pun">(</span><span class="pln">pipeline</span><span class="pun">(</span><span class="pln">c<wbr/></span><span class="pun">.</span><span class="pln">holdingValve</span><span class="pun">)))</span><span class="pun">);</span>
+			<span class="pun">)</span><span class="pun">;</span>
 					</div>
 				</code>
 			</div>
-			<section></section>
-
-			<section><h2>Parameters</h2>
-<table><col class="caption"><tr><th>Name</th><th>Description</th></tr>
-<tr><td id="pipeline">pipeline</td><td> a lambda template used to generate the pipeline that will
-    be set up as a push chain.</td></tr>
-<tr><td id="autoFlush">autoFlush</td><td> true (default) if you wish to auto-flush the push pipeline
-    when all references to it are gone. This moves the whole chain into a
-    RefCounted struct which automatically flushes any remaining data that
-    hasn't been flushed.</td></tr>
-<tr><td id="c">c</td><td> An ioPipe to be used as the source for the data being pushed.</td></tr>
-</table>
-</section>
-<section><h2>Returns</h2>
-<p>A wrapped chain that will push any data that is released as needed
- (i.e. as the buffer fills up).
-</p>
-</section>
-<section><h2>Note</h2>
-<p>If autoFlush is false, you will need to manually call flush on the
- pipeline after all processing is done.
-</p>
-</section>
-
+			
+			
 			<footer>
 				<table class="license-info">
 					<tr>
 						<th>Authors</th>
 						<td>
-							<p>Steven Schveighoffer
-</p>
-
+							
 						</td>
 					</tr>
 					<tr>
 						<th>Copyright</th>
 						<td>
-							<p>Copyright Steven Schveighoffer 2011-.
-</p>
-
+							
 						</td>
 					</tr>
 					<tr>
 						<th>License</th>
 						<td>
-							<p>Boost License 1.0. (See accompanying file LICENSE_1_0.txt or copy
-           at http://www.boost.org/LICENSE_1_0.txt)
-</p>
-
+							
 						</td>
 					</tr>
 				</table>
