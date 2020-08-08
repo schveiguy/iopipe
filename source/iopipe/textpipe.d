@@ -332,7 +332,6 @@ private struct DelimitedTextPipe(Chain)
         auto newChecked = checked;
         endsWithDelim = false;
         const ve = validDelimElems;
-        //if(validDelimElems == 1)
         {
             // scan for first delimiter element
 byline_outer_1:
@@ -381,7 +380,6 @@ ctfe_while:
                             {
                                 // found it
                                 newChecked = delimp + 1 - w.ptr;
-                                endsWithDelim = true;
                                 return true;
                             }
                         }
@@ -394,7 +392,6 @@ ctfe_while:
                                 {
                                     // found it
                                     newChecked = p - w.ptr;
-                                    endsWithDelim = true;
                                     return true;
                                 }
                             }
@@ -418,8 +415,15 @@ ctfe_while:
                                 ++i;
                             }
                             if(i == ve)
+                            {
+                                endsWithDelim = true;
                                 break byline_outer_1;
-
+                            }
+                        }
+                        else
+                        {
+                            endsWithDelim = true;
+                            break byline_outer_1;
                         }
                     }
                     else
@@ -427,6 +431,7 @@ ctfe_while:
                 }
                 else
                 {
+generic_range_while:
                     while(newChecked + ve <= w.length)
                     {
                         if(w[newChecked++] == t)
@@ -434,7 +439,7 @@ ctfe_while:
                             // found first element, look for the others
                             foreach(i; 1 .. ve)
                                 if(w[newChecked] != delimElems[i])
-                                    continue ctfe_while;
+                                    continue generic_range_while;
                                 else
                                     ++newChecked;
                             endsWithDelim = true;
@@ -450,43 +455,6 @@ ctfe_while:
                 newChecked = chain.window.length;
             }
         }
-        /*else // shouldn't be compiled in the case of dchar
-        {
-            // need to check multiple elements
-byline_outer_2:
-            while(true)
-            {
-                // load everyhing into locals to avoid unnecessary dereferences.
-                auto w = chain.window;
-                auto se = skippableElems;
-                auto ve = validDelimElems;
-                while(newChecked + ve <= w.length)
-                {
-                    size_t i = 0;
-                    auto ptr = delimElems.ptr;
-                    while(i < ve)
-                    {
-                        if(w[newChecked + i] != *ptr++)
-                        {
-                            newChecked += i < se ? i + 1 : se;
-                            continue byline_outer_2;
-                        }
-                        ++i;
-                    }
-                    // found it
-                    endsWithDelim = true;
-                    newChecked += ve;
-                    break byline_outer_2;
-                }
-
-                // need to read more data
-                if(chain.extend(elements) == 0)
-                {
-                    newChecked = chain.window.length;
-                    break;
-                }
-            }
-        }*/
 
         auto prevChecked = checked;
         if(checked != newChecked)
@@ -544,18 +512,23 @@ auto delimitedText(Chain)(Chain c, dchar delim = '\n')
 
 @safe unittest
 {
-    auto p = "hello world, this is a test".delimitedText(' ');
-    p.extend;
-    assert(p.window == "hello ");
-    p.extend;
-    assert(p.window == "hello world, ");
-    p.extend;
-    assert(p.window == "hello world, this ");
-    assert(p.segments == 3);
-    assert(p.delimTrailer == 1);
-    p.process();
-    assert(p.segments == 6);
-    assert(p.delimTrailer == 0);
+    static void testIt(X)(X p)
+    {
+        p.extend;
+        assert(p.window == "hello ");
+        p.extend;
+        assert(p.window == "hello world, ");
+        p.extend;
+        assert(p.window == "hello world, this ");
+        assert(p.segments == 3);
+        assert(p.delimTrailer == 1);
+        p.process();
+        assert(p.segments == 6);
+        assert(p.delimTrailer == 0);
+    }
+    testIt("hello world, this is a test".delimitedText(' '));
+    // bug #32
+    testIt(SimplePipe!string("hello world, this is a test").delimitedText(' '));
 
     // add valve support
     import iopipe.valve;
