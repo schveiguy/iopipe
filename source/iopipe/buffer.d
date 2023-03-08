@@ -547,28 +547,30 @@ private:
 {
     RingBuffer!(ubyte, 8192) buf;
     assert(buf.extend(4096) == 4096);
-    assert(buf.avail == 8192 - 4096);
-    assert(buf.capacity == 8192);
+    // some systems do not have a page size of 4k
+    auto cap = buf.capacity;
+    assert(cap >= 8192);
+    assert(buf.avail == cap - 4096);
     buf.window[0] = 0;
-    assert(buf.buffer.length == 8192 * 2);
+    assert(buf.buffer.length == cap * 2);
 
     assert(buf.extend(4096) == 4096);
-    assert(buf.avail == 0);
-    assert(buf.capacity == 8192);
+    assert(buf.avail == cap - 8192);
+    assert(buf.capacity == cap);
 
     buf.releaseFront(4096);
-    assert(buf.avail == 4096);
-    assert(buf.capacity == 8192);
+    assert(buf.avail == cap - 4096);
+    assert(buf.capacity == cap);
     assert(buf.extend(4096) == 4096);
-    assert(buf.avail == 0);
-    assert(buf.capacity == 8192);
+    assert(buf.avail == cap - 8192);
+    assert(buf.capacity == cap);
     import std.algorithm : copy, map, equal;
     import std.range : iota;
     iota(8192).map!(a => cast(ubyte)a).copy(buf.window);
     assert(equal(iota(8192).map!(a => cast(ubyte)a), buf.window));
     buf.releaseFront(4096);
     assert(equal(iota(4096, 8192).map!(a => cast(ubyte)a), buf.window));
-    assert(buf.released == 0); // assure we wrap around
+    assert(buf.released <= cap); // assure we wrap around
     assert(buf.extend(8192) == 8192);
     assert(equal(iota(4096, 8192).map!(a => cast(ubyte)a), buf.window[0 .. 4096]));
 }

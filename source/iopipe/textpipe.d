@@ -934,14 +934,14 @@ template textConverter(bool ensureBOM = false, Chain)
             static if(is(Unqual!Char == Unqual!SrcChar))
             {
                 import std.algorithm.mutation: copy;
-                import std.algorithm.comparison: max;
+                import std.algorithm.comparison: min;
                 // try an extend when window length gets to be less than read size.
                 if(chain.window.length < buf.length)
                     chain.extend(buf.length - chain.window.length);
                 if(chain.window.length == 0)
                     // no more data
                     return 0;
-                immutable len = max(chain.window.length, buf.length);
+                immutable len = min(chain.window.length, buf.length);
                 copy(chain.window[0 .. len], buf[0 .. len]);
                 chain.release(len);
                 return result + len;
