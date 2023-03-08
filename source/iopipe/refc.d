@@ -84,7 +84,7 @@ struct RefCounted(T)
     {
         if(_impl)
         {
-            assert(_impl._count >= 0, "Invalid count detected");
+            assert(_impl._count > 0, "Invalid count detected");
             import core.atomic;
             if(_impl._count.atomicOp!"-="(1) == 0)
             {
