@@ -77,3 +77,49 @@ struct ZeroDev
 
 /// Common instance of ZeroDev to use anywhere needed.
 immutable ZeroDev zeroDev;
+
+/// Convert output of response.receiveAsRange() from requests package to a device
+// alias ResponseStreamDev = RangeOfSlicesDev!ReceiveAsRange;
+
+/** Construct iopipe device from Range of slices.
+ * Note on lifetime: Each individual slice returned by the range must be valid until popFront is called again. The device only copies data on a read call. 
+ * Params:
+ * 	RoS = Range of (ubyte[]) slices. 
+ */
+struct RangeOfSlicesDev(RoS) {
+	static assert(isInputRange!(RoS) && is(ElementType!RoS == ubyte[]), "Must be compatible with ReceiveAsRange");
+	RoS sourceRange;
+	/// View on the data returned by sourceRange
+	ubyte[] data;
+	this(RoS sourceRange){
+		this.sourceRange = sourceRange;
+		if(!sourceRange.empty){
+			data = this.sourceRange.front;
+			this.sourceRange.popFront;
+		}
+	}
+
+	/// Copy chunk of data from range into outbuf. 
+	size_t read(ubyte[] outbuf){
+		size_t datalen = data.length;
+		size_t outlen = outbuf.length;
+		if(datalen == 0){
+			if(sourceRange.empty)
+				return 0;
+			data = sourceRange.front;
+			sourceRange.popFront;
+			datalen = data.length;
+		}
+
+		if(datalen<outlen){
+			outbuf[0..datalen] = data[];
+			data.length = 0; 
+			return datalen;
+		}else{
+			outbuf[] = data[0..outlen];
+			data = data[outlen..$];
+			return outlen;
+		}
+	}
+
+}
