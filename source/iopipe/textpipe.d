@@ -192,19 +192,14 @@ auto ensureDecodeable(Chain)(Chain c) if (isIopipe!Chain && isSomeChar!(ElementE
     import std.traits: Unqual;
     alias CodeUnitType = Unqual!(ElementEncodingType!(WindowType!Chain));
 
-    // need to stop chaining if the last thing was an ensureDecodable. Of
-    // course, it's very hard to check if the type is a DecodeableWindow. What
-    // we do is pretend to wrap c's upstream chain, and see if it results in
-    // the exact type we were passed. If this is the case, then it must be a
-    // type that was wrapped with a DecodableWindow.
     static if(is(CodeUnitType == dchar))
     {
         // always decodeable
         return c;
     }
-    else static if(__traits(hasMember, Chain, "chain") &&
-                   is(typeof(.ensureDecodeable(c.chain)) == Chain))
+    else static if(is(Chain == DecodeableWindow!T, T...))
     {
+        // already decodeable
         return c;
     }
     else
