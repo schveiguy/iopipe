@@ -104,7 +104,7 @@ private size_t copy(Src, Buf)(ref Src src, Buf buf) if(is(immutable(ElementEncod
     }
 }
 
-struct RangeInput(R) {
+struct RangeDev(R) {
     private import std.traits: isNarrowString;
     private {
         R src;
@@ -127,11 +127,11 @@ struct RangeInput(R) {
 
     size_t read(Buf)(Buf buf) if (isNarrowString!Buf || isRandomAccessRange!Buf)
     {
-        static if(is(typeof(copy(src, buf))))
+        static if(__traits(compiles, copy(src, buf)))
         {
             return copy(src, buf);
         }
-        else static if(isRangeOfSlices && is(typeof(copy(data, buf))))
+        else static if(isRangeOfSlices && __traits(compiles, copy(data, buf)))
         {
             size_t n = 0;
             while(n < buf.length && !src.empty)
@@ -155,11 +155,11 @@ struct RangeInput(R) {
  * It can be used as an input source for any iopipe.
  *
  * This has a specialization for an input range that is a "range of slices"
- * type, since we can utilize slice assignment for the copy.
+ * type, since it can utilize slice assignment for the copy.
  */
-auto rangeInput(R)(R range) if (isInputRange!R)
+auto rangeDev(R)(R range) if (isInputRange!R)
 {
-    return RangeInput!R(range);
+    return RangeDev!R(range);
 }
 
 unittest
@@ -173,9 +173,9 @@ unittest
     // make a big range of characters
     {
         auto bigRange = repeat(only(repeat('a', 10), repeat('b', 10))).joiner.joiner.take(100000);
-        auto inp = bigRange.rangeInput;
+        auto inp = bigRange.rangeDev;
         inp.read(cast(char[])[]);
-        auto pipe = bigRange.rangeInput.bufd!char;
+        auto pipe = inp.bufd!char;
         pipe.ensureElems();
         assert(equal(pipe.window.byChar, bigRange));
     }
@@ -183,9 +183,9 @@ unittest
     // try a range of slices
     {
         auto bigRange = repeat(only("aaaaaaaaaa", "bbbbbbbbbb"), 10000).joiner;
-        auto inp = bigRange.rangeInput;
+        auto inp = bigRange.rangeDev;
         inp.read(cast(char[])[]);
-        auto pipe = bigRange.rangeInput.bufd!char;
+        auto pipe = inp.bufd!char;
         pipe.ensureElems();
         assert(equal(pipe.window, bigRange.joiner));
     }
