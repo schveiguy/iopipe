@@ -107,6 +107,9 @@ cases, you may receive a 0 when an upstream valve is holding back some of the
 data (this is defined by whomever implemented the valve). You are allowed to
 attempt to extend an iopipe even when a previous call to extend returned 0.
 
+Previous calls or accesses to `window` should be discarded. Extend is allowed
+to reallocate or move the data if needed.
+
 ## More Concepts
 
 ### Sources
